@@ -1,0 +1,34 @@
+# --- Secrets & Config ---
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# --- Node / React (Frontend) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+.eslintcache
+
+# --- Docker & System ---
+.DS_Store
+*.log
+docker-compose.override.yml
+.docker/
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo

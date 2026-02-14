@@ -1,0 +1,25 @@
+services:
+  # 1. Django Backend Service
+  backend:
+    build: ./backend
+    container_name: django_backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env  # This pulls all variables from your .env file
+      
+  # 2. React Frontend Service
+  frontend:
+    build: ./frontend
+    container_name: react_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    depends_on:
+      - backend
