@@ -11,8 +11,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-123')
 # 1. Force DEBUG to be a real Boolean by comparing the string '1'
 DEBUG = os.environ.get('DEBUG') == '1'
 
-# 2. Allow all hosts during development to bypass the security check
-ALLOWED_HOSTS = ['*']
+
+# To be safe for testing, allow the cluster's internal network and the public IP
+ALLOWED_HOSTS = ['20.203.82.12', 'django-backend-service', 'localhost', '127.0.0.1']
 
 # This tells Django where to find your main urls.py file
 ROOT_URLCONF = 'core.urls'
