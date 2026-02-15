@@ -19,7 +19,7 @@ function App() {
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
-      <h1>Group Project Frontend</h1>
+      <h1>Demo Project Frontend</h1>
       <p>Message from Backend: <strong>{message}</strong></p>
     </div>
   )
