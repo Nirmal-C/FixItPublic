@@ -4,11 +4,17 @@ function App() {
   const [message, setMessage] = useState('Loading...')
 
   useEffect(() => {
-    // We point to localhost:8000 because your BROWSER is making the request
-    fetch('http://localhost:8000/api/hello/')
+    // Get the API URL from environment variables
+    // If it's undefined, it defaults to an empty string (relative path)
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    
+    fetch(`${apiUrl}/hello/`)
       .then(res => res.json())
       .then(data => setMessage(data.message || data.hello))
-      .catch(err => setMessage('Backend not reachable yet!'))
+      .catch(err => {
+        console.error("Fetch error:", err);
+        setMessage('Backend not reachable yet!');
+      })
   }, [])
 
   return (
