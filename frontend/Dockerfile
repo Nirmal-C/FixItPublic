@@ -36,11 +36,11 @@ RUN npm run build
 # --- Stage 2: Serve the app with Nginx ---
 FROM nginx:stable-alpine
 
-# Copy the build output from the first stage to Nginx
+# Copy the build output from the first stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy a custom nginx config (see note below)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# ADD THIS LINE: Copy your custom nginx config into the image
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
