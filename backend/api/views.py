@@ -6,9 +6,18 @@ def hello_world(request):
 
 def health_check(request):
     try:
-        # This executes a simple query to see if the DB is alive
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        return JsonResponse({"status": "healthy"}, status=200)
+        return JsonResponse({
+            "status": "online",
+            "database": "connected",
+            "message": "Backend is fully operational"
+        }, status=200)
     except Exception as e:
-        return JsonResponse({"status": "unhealthy", "error": str(e)}, status=503)
+        # We return 200 so the Pod stays "Ready" in K8s, 
+        # but the JSON tells the React frontend the truth.
+        return JsonResponse({
+            "status": "online",
+            "database": "disconnected",
+            "message": "Backend is live, but Database is down"
+        }, status=200)
