@@ -7,38 +7,47 @@ function App() {
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || '';
     
-    // 1. Fetch the Greeting Message
-    fetch(`${apiUrl}/hello/`)
+    // We consolidate into one call to the health endpoint 
+    // since it now returns both the greeting and the DB status.
+    fetch(`${apiUrl}/api/health/`)
       .then(res => res.json())
-      .then(data => setMessage(data.message || data.hello))
-      .catch(err => setMessage('Backend not reachable!'));
-
-    // 2. Fetch the Database Health Status
-    fetch(`${apiUrl}/health/`)
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
+      .then(data => {
+        // Even if DB is down, the backend is reachable, so we show the message
+        setMessage(data.message || 'Connected to Backend');
+        
+        // Check the specific database key we defined in Django
+        if (data.database === 'connected') {
+          setDbStatus({ loading: false, healthy: true });
+        } else {
+          setDbStatus({ loading: false, healthy: false });
+        }
       })
-      .then(() => setDbStatus({ loading: false, healthy: true }))
-      .catch(() => setDbStatus({ loading: false, healthy: false }));
+      .catch(err => {
+        // This only triggers if the entire Django container is crashed/stopped
+        console.error("Fetch error:", err);
+        setMessage('Backend not reachable!');
+        setDbStatus({ loading: false, healthy: false });
+      });
   }, [])
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>
-      <h1>Demo Project Frontend</h1>
+      <h1>Group Project Frontend</h1>
       
       <div style={{ marginBottom: '20px' }}>
-        <p>Message from Backend: <strong>{message}</strong></p>
+        {/* This message will now show "Backend is live, but Database is down" 
+            instead of "Backend not reachable" when the DB is off */}
+        <p>System Message: <strong>{message}</strong></p>
       </div>
 
-      {/* --- Database Health Indicator --- */}
       <div style={{
         display: 'inline-block',
         padding: '15px 25px',
         borderRadius: '10px',
         backgroundColor: dbStatus.loading ? '#eee' : (dbStatus.healthy ? '#d4edda' : '#f8d7da'),
         border: `1px solid ${dbStatus.healthy ? '#c3e6cb' : '#f5c6cb'}`,
-        color: dbStatus.healthy ? '#155724' : '#721c24'
+        color: dbStatus.healthy ? '#155724' : '#721c24',
+        transition: 'all 0.5s ease' // Smooth color transition for the demo
       }}>
         <h3 style={{ margin: 0 }}>
           Database Status: {dbStatus.loading ? 'Checking...' : (dbStatus.healthy ? 'Connected ✅' : 'Disconnected ❌')}
