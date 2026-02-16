@@ -8,13 +8,13 @@ function App() {
     const apiUrl = import.meta.env.VITE_API_URL || '';
     
     // 1. Fetch the Greeting Message
-    fetch(`${apiUrl}/api/hello/`)
+    fetch(`${apiUrl}/hello/`)
       .then(res => res.json())
       .then(data => setMessage(data.message || data.hello))
       .catch(err => setMessage('Backend not reachable!'));
 
     // 2. Fetch the Database Health Status
-    fetch(`${apiUrl}/api/health/`)
+    fetch(`${apiUrl}/health/`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
