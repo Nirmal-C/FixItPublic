@@ -1,25 +1,16 @@
 import os
-
-# settings.py
-
-# 1. The URL used to access static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 
-# 2. A secret key for security (In production, use an environment variable!)
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-123')
 
-# 1. Force DEBUG to be a real Boolean by comparing the string '1'
 DEBUG = os.environ.get('DEBUG') == '1'
 
 
-# To be safe for testing, allow the cluster's internal network and the public IP
 # ALLOWED_HOSTS = ['20.203.82.12', 'localhost', '127.0.0.1', '10.244.0.0/16']
 ALLOWED_HOSTS = ['*']
 
-# This tells Django where to find your main urls.py file
 ROOT_URLCONF = 'core.urls'
 
-# This tells Django how to run the web application
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # 1. Base Database Configuration
@@ -35,7 +26,6 @@ DATABASES = {
 }
 
 # 2. Conditional SSL Configuration
-# Only add 'OPTIONS' if we are connecting to Azure with SSL enabled
 if os.environ.get('DB_SSL') == 'True':
     DATABASES['default']['OPTIONS'] = {
         'sslmode': 'verify-full',
@@ -43,14 +33,13 @@ if os.environ.get('DB_SSL') == 'True':
     }
 
 INSTALLED_APPS = [
-    'django.contrib.admin',           # <--- Make sure this is here!
+    'django.contrib.admin',     
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    # ... your other apps like 'rest_framework' or 'api'
 ]
 
 MIDDLEWARE = [
@@ -64,9 +53,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 TEMPLATES = [
     {
