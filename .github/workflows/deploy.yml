@@ -35,7 +35,7 @@ jobs:
           build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
           tags: ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest, ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
-  # --- NEW DEPLOY JOB ---
+  # --- DEPLOY JOB ---
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -47,6 +47,13 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Log in to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
