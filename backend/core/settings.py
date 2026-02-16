@@ -13,7 +13,8 @@ DEBUG = os.environ.get('DEBUG') == '1'
 
 
 # To be safe for testing, allow the cluster's internal network and the public IP
-ALLOWED_HOSTS = ['20.203.82.12', 'localhost', '127.0.0.1', '10.244.0.0/16']
+# ALLOWED_HOSTS = ['20.203.82.12', 'localhost', '127.0.0.1', '10.244.0.0/16']
+ALLOWED_HOSTS = ['*']
 
 # This tells Django where to find your main urls.py file
 ROOT_URLCONF = 'core.urls'
