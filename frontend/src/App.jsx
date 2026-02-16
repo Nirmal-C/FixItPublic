@@ -1,56 +1,59 @@
 import { useEffect, useState } from 'react'
 
 function App() {
-  const [message, setMessage] = useState('Loading...')
+  const [message, setMessage] = useState('Connecting to API...')
   const [dbStatus, setDbStatus] = useState({ loading: true, healthy: false })
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || '';
     
+    // 1. Check General Backend Greeting
+    fetch(`${apiUrl}/hello/`)
+      .then(res => res.json())
+      .then(data => setMessage(data.message))
+      .catch(() => setMessage('Backend is completely unreachable!'));
+
+    // 2. Check Database Specific Health
     fetch(`${apiUrl}/health/`)
       .then(res => res.json())
       .then(data => {
-        // Even if DB is down, the backend is reachable, so we show the message
-        setMessage(data.message || 'Connected to Backend');
-        
-        // Check the specific database key we defined in Django
         if (data.database === 'connected') {
           setDbStatus({ loading: false, healthy: true });
         } else {
           setDbStatus({ loading: false, healthy: false });
+          setMessage(data.message); 
         }
       })
-      .catch(err => {
-        // This only triggers if the entire Django container is crashed/stopped
-        console.error("Fetch error:", err);
-        setMessage('Backend not reachable!');
+      .catch(() => {
         setDbStatus({ loading: false, healthy: false });
       });
   }, [])
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>
-      <h1>Group Project Frontend</h1>
+      <h1>Group Project Dashboard</h1>
       
-      <div style={{ marginBottom: '20px' }}>
-        {/* This message will now show "Backend is live, but Database is down" 
-            instead of "Backend not reachable" when the DB is off */}
-        <p>System Message: <strong>{message}</strong></p>
+      <div style={{ marginBottom: '30px', padding: '10px', fontSize: '1.2rem' }}>
+        System Notification: <br/>
+        <strong>{message}</strong>
       </div>
 
       <div style={{
         display: 'inline-block',
-        padding: '15px 25px',
-        borderRadius: '10px',
-        backgroundColor: dbStatus.loading ? '#eee' : (dbStatus.healthy ? '#d4edda' : '#f8d7da'),
-        border: `1px solid ${dbStatus.healthy ? '#c3e6cb' : '#f5c6cb'}`,
+        padding: '20px 40px',
+        borderRadius: '12px',
+        backgroundColor: dbStatus.loading ? '#f0f0f0' : (dbStatus.healthy ? '#d4edda' : '#f8d7da'),
+        border: `2px solid ${dbStatus.healthy ? '#c3e6cb' : '#f5c6cb'}`,
         color: dbStatus.healthy ? '#155724' : '#721c24',
-        transition: 'all 0.5s ease' // Smooth color transition for the demo
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        transition: 'all 0.4s ease'
       }}>
-        <h3 style={{ margin: 0 }}>
-          Database Status: {dbStatus.loading ? 'Checking...' : (dbStatus.healthy ? 'Connected ✅' : 'Disconnected ❌')}
-        </h3>
+        <h2 style={{ margin: 0 }}>
+          Database Status: {dbStatus.loading ? '🔍 Checking...' : (dbStatus.healthy ? 'Connected ✅' : 'Disconnected ❌')}
+        </h2>
       </div>
+      
+      <p style={{ marginTop: '20px', color: '#666' }}>AKS Cluster Environment</p>
     </div>
   )
 }
