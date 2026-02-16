@@ -7,9 +7,7 @@ function App() {
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || '';
     
-    // We consolidate into one call to the health endpoint 
-    // since it now returns both the greeting and the DB status.
-    fetch(`${apiUrl}/api/health/`)
+    fetch(`${apiUrl}/health/`)
       .then(res => res.json())
       .then(data => {
         // Even if DB is down, the backend is reachable, so we show the message
