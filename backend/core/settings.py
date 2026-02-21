@@ -1,72 +1,57 @@
 import os
-STATIC_URL = 'static/'
+from pathlib import Path
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-123')
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-DEBUG = os.environ.get('DEBUG') == '1'
+# 1. Security Settings
+# Pulling from GitHub Secrets (via K8s)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
+# Set DEBUG to False in production for GPO3/Security compliance
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# ALLOWED_HOSTS = ['20.203.82.12', 'localhost', '127.0.0.1', '10.244.0.0/16']
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-ROOT_URLCONF = 'core.urls'
-
-WSGI_APPLICATION = 'core.wsgi.application'
-
-# 1. Base Database Configuration
+# 2. Database Configuration (No hardcoded credentials)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'postgres'),
-        'USER': os.environ.get('DB_USER', 'db_admin'),
-        'PASSWORD': os.environ.get('DB_PASS', 'NirmalRukshan9899'),
-        'HOST': os.environ.get('DB_HOST', 'posgresql-db.postgres.database.azure.com'),
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASS'),
+        'HOST': os.environ.get('DB_HOST'),
         'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
     }
 }
 
-# 2. Conditional SSL Configuration
-if os.environ.get('DB_SSL') == 'True':
-    DATABASES['default']['OPTIONS'] = {
-        'sslmode': 'verify-full',
-        'sslrootcert': '/app/certs/root.crt',
-    }
+# 3. Custom User Model (CRITICAL for FixITPublic)
+# This points to the User class in your api/models.py
+AUTH_USER_MODEL = 'api.User'
 
 INSTALLED_APPS = [
-    'django.contrib.admin',     
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',
+    'rest_framework',      # For the Maintenance API
+    'corsheaders',         # For React communication
+    'api',                 # Your app
+    'storages',            # For Azure Blob Storage
 ]
 
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-CORS_ALLOW_ALL_ORIGINS = True
-
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
+# 4. Media Storage (Azure Blob Storage for Facility Photos)
+if not DEBUG:
+    # Production settings for Azure
+    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    AZURE_ACCOUNT_NAME = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')
+    AZURE_ACCOUNT_KEY = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY')
+    AZURE_CONTAINER = 'maintenance-photos'
+else:
+    # Local development settings
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
