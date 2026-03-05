@@ -5,8 +5,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- 1. Security Settings ---
+# Pulls from K8s Secret (app-secrets)
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-local-dev-key')
+
+# DEBUG is True locally, False in Kubernetes
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # --- 2. Application Definition ---
@@ -17,12 +21,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Required for Cloud & API
+    'storages',      # django-storages[azure]
     'rest_framework',
     'corsheaders',
+    'api',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Best for static files in Docker
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -32,7 +41,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Set to 'core' based on your folder structure
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
@@ -54,6 +62,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # --- 3. Database Configuration ---
+# Uses PostgreSQL with SSL for Azure Flexible Server
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -68,18 +77,34 @@ DATABASES = {
     }
 }
 
-# --- 4. Custom User Model ---
-# Removed AUTH_USER_MODEL = 'api.User' to use default Django User
-
-# --- 5. Static & Media ---
+# --- 4. Static & Media Files ---
+# Static files use WhiteNoise for performance in K8s
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Media Files: Toggle between Local (Dev) and Azure (Prod)
+if not DEBUG:
+    # Use Azure Blob Storage for User Uploads
+    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    
+    AZURE_ACCOUNT_NAME = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')
+    AZURE_ACCOUNT_KEY = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY')
+    AZURE_CONTAINER = 'maintenance-photos'
+    
+    # Ensure URLs don't expire since your container is set to 'Blob' access
+    AZURE_URL_EXPIRATION_SECS = None
+    
+    # The public URL for images
+    AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
+    MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
+else:
+    # Local fallback
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# --- 6. CORS (Required for React) ---
-CORS_ALLOW_ALL_ORIGINS = True 
+# --- 5. CORS & Security ---
+CORS_ALLOW_ALL_ORIGINS = True  # Fine for group projects; restrict in production
 
-# --- 7. Misc ---
+# --- 6. Misc ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
