@@ -25,7 +25,9 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:latest, ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
 
       - name: Build and Push Frontend
         uses: docker/build-push-action@v5
@@ -33,7 +35,9 @@ jobs:
           context: ./frontend
           push: true
           build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest, ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
   # --- DEPLOY JOB ---
   deploy:
@@ -47,7 +51,7 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
+                
       - name: Log in to ACR
         uses: azure/docker-login@v1
         with:
@@ -61,6 +65,21 @@ jobs:
           resource-group: 'Group_Project'
           cluster-name: 'GroupProjectCluster'
 
+      # --- SYNC SECRETS TO K8S ---
+      # This step takes your GitHub Secrets and creates a K8s Secret named 'app-secrets'
+      - name: Create or Update K8s Secrets
+        run: |
+          kubectl create secret generic app-secrets \
+            --from-literal=DJANGO_SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}' \
+            --from-literal=DB_NAME='${{ secrets.DB_NAME }}' \
+            --from-literal=DB_USER='${{ secrets.DB_USER }}' \
+            --from-literal=DB_PASS='${{ secrets.DB_PASS }}' \
+            --from-literal=DB_HOST='${{ secrets.DB_HOST }}' \
+            --from-literal=AZURE_STORAGE_ACCOUNT_NAME='${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}' \
+            --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # --- DEPLOY TO CLUSTER ---
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -70,3 +89,10 @@ jobs:
           images: |
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
+          
+      # --- POST-DEPLOYMENT MIGRATIONS ---
+      # Automatically runs database migrations after the new code is live
+      - name: Run Django Migrations
+        run: |
+          POD_NAME=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec $POD_NAME -- python manage.py migrate --noinput
