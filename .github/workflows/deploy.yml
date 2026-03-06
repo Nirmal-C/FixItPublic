@@ -64,7 +64,6 @@ jobs:
           resource-group: 'Group_Project'
           cluster-name: 'GroupProjectCluster'
 
-      # --- SYNC SECRETS TO K8S ---
       - name: Create or Update K8s Secrets
         run: |
           kubectl create secret generic app-secrets \
@@ -77,18 +76,6 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      # --- DELETE OLD BACKEND PODS IF NECESSARY ---
-      - name: Delete old Django pods to free resources
-        run: |
-          for POD in $(kubectl get pods -l app=django-backend -o jsonpath="{.items[*].metadata.name}"); do
-            STATUS=$(kubectl get pod $POD -o jsonpath='{.status.phase}')
-            if [ "$STATUS" == "Running" ]; then
-              echo "Deleting old pod: $POD to free resources"
-              kubectl delete pod $POD
-            fi
-          done
-
-      # --- DEPLOY TO CLUSTER ---
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -99,13 +86,7 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
-      # --- WAIT FOR NEW POD TO BE READY ---
-      - name: Wait for Django backend pod to be healthy
+      - name: Wait for Deployments to Stabilize
         run: |
           kubectl rollout status deployment/django-backend --timeout=300s
-
-      # --- POST-DEPLOYMENT MIGRATIONS ---
-      - name: Run Django Migrations
-        run: |
-          POD_NAME=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec $POD_NAME -- python manage.py migrate --noinput
+          kubectl rollout status deployment/react-frontend --timeout=300s
