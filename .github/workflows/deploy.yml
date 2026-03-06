@@ -64,6 +64,7 @@ jobs:
           resource-group: 'Group_Project'
           cluster-name: 'GroupProjectCluster'
 
+      # --- SYNC SECRETS TO K8S ---
       - name: Create or Update K8s Secrets
         run: |
           kubectl create secret generic app-secrets \
@@ -76,6 +77,18 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      # --- DELETE OLD BACKEND PODS IF NECESSARY ---
+      - name: Delete old Django pods to free resources
+        run: |
+          for POD in $(kubectl get pods -l app=django-backend -o jsonpath="{.items[*].metadata.name}"); do
+            STATUS=$(kubectl get pod $POD -o jsonpath='{.status.phase}')
+            if [ "$STATUS" == "Running" ]; then
+              echo "Deleting old pod: $POD to free resources"
+              kubectl delete pod $POD
+            fi
+          done
+
+      # --- DEPLOY TO CLUSTER ---
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -86,27 +99,13 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
-      # --- Wait for new backend pod ---
-      - name: Wait for new Django backend pod to be ready
+      # --- WAIT FOR NEW POD TO BE READY ---
+      - name: Wait for Django backend pod to be healthy
         run: |
-          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
-          echo "New pod: $NEW_POD"
-          kubectl wait --for=condition=ready pod/$NEW_POD --timeout=120s
+          kubectl rollout status deployment/django-backend --timeout=300s
 
-      # --- Run migrations on the new pod ---
-      - name: Run Django migrations on new pod
+      # --- POST-DEPLOYMENT MIGRATIONS ---
+      - name: Run Django Migrations
         run: |
-          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
-          echo "Running migrations on pod: $NEW_POD"
-          kubectl exec $NEW_POD -- python manage.py migrate --noinput
-
-      # --- Delete old pods safely ---
-      - name: Delete old Django pods
-        run: |
-          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
-          for POD in $(kubectl get pods -l app=django-backend -o jsonpath="{.items[*].metadata.name}"); do
-            if [ "$POD" != "$NEW_POD" ]; then
-              echo "Deleting old pod: $POD"
-              kubectl delete pod $POD
-            fi
-          done
+          POD_NAME=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec $POD_NAME -- python manage.py migrate --noinput
