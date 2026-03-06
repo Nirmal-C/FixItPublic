@@ -39,7 +39,6 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
-  # --- DEPLOY JOB ---
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -51,7 +50,7 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-                
+
       - name: Log in to ACR
         uses: azure/docker-login@v1
         with:
@@ -65,8 +64,6 @@ jobs:
           resource-group: 'Group_Project'
           cluster-name: 'GroupProjectCluster'
 
-      # --- SYNC SECRETS TO K8S ---
-      # This step takes your GitHub Secrets and creates a K8s Secret named 'app-secrets'
       - name: Create or Update K8s Secrets
         run: |
           kubectl create secret generic app-secrets \
@@ -79,7 +76,6 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      # --- DEPLOY TO CLUSTER ---
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -89,10 +85,28 @@ jobs:
           images: |
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
-          
-      # --- POST-DEPLOYMENT MIGRATIONS ---
-      # Automatically runs database migrations after the new code is live
-      - name: Run Django Migrations
+
+      # --- Wait for new backend pod ---
+      - name: Wait for new Django backend pod to be ready
         run: |
-          POD_NAME=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec $POD_NAME -- python manage.py migrate --noinput
+          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
+          echo "New pod: $NEW_POD"
+          kubectl wait --for=condition=ready pod/$NEW_POD --timeout=120s
+
+      # --- Run migrations on the new pod ---
+      - name: Run Django migrations on new pod
+        run: |
+          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
+          echo "Running migrations on pod: $NEW_POD"
+          kubectl exec $NEW_POD -- python manage.py migrate --noinput
+
+      # --- Delete old pods safely ---
+      - name: Delete old Django pods
+        run: |
+          NEW_POD=$(kubectl get pods -l app=django-backend -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}" | awk '{print $1}')
+          for POD in $(kubectl get pods -l app=django-backend -o jsonpath="{.items[*].metadata.name}"); do
+            if [ "$POD" != "$NEW_POD" ]; then
+              echo "Deleting old pod: $POD"
+              kubectl delete pod $POD
+            fi
+          done
