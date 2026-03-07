@@ -1,26 +1,27 @@
-name: CI/CD Build and Push
+name: CI/CD Build and Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
+
   build-and-push:
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ github.sha }}
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Log in to ACR
+      - name: Log in to Azure Container Registry
         uses: azure/docker-login@v1
         with:
           login-server: ${{ secrets.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and Push Backend
+      - name: Build and Push Backend Image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -29,12 +30,13 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
 
-      - name: Build and Push Frontend
+      - name: Build and Push Frontend Image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
           tags: |
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
@@ -42,7 +44,9 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+
     steps:
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -61,8 +65,8 @@ jobs:
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
         with:
-          resource-group: 'Group_Project'
-          cluster-name: 'GroupProjectCluster'
+          resource-group: Group_Project
+          cluster-name: GroupProjectCluster
 
       - name: Create or Update K8s Secrets
         run: |
@@ -86,7 +90,12 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
 
-      - name: Wait for Deployments to Stabilize
+      - name: Restart Deployments
+        run: |
+          kubectl rollout restart deployment/django-backend
+          kubectl rollout restart deployment/react-frontend
+
+      - name: Wait for Deployments
         run: |
           kubectl rollout status deployment/django-backend --timeout=300s
           kubectl rollout status deployment/react-frontend --timeout=300s
