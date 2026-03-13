@@ -4,10 +4,23 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // This allows the server to be accessible outside the container
+    host: true,
     port: 5173,
     watch: {
-      usePolling: true, // Helps with Hot Module Replacement (HMR) on Windows/Docker
+      usePolling: true,
+    },
+    // Proxy /api and /health to the Django backend in development.
+    // When the backend is not running locally, requests will fail
+    // (connection refused) and the frontend falls back to mock data.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })
