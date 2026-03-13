@@ -1,9 +1,131 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Zap, Trees, Construction, ArrowRight,
   ShieldCheck, MapPin, Bell, Users,
   ChevronRight, Star, Clock, CheckCircle2,
+  Search, AlertCircle, Loader2,
 } from 'lucide-react'
+import { requestsApi } from '../api/client'
+import StatusBadge from '../components/StatusBadge'
+
+// Same mock records used on the ViewRequestsPage — lets the tracker work in demo mode
+// when the backend is offline. In Sprint 3 this will call the live API.
+const MOCK_LOOKUP = {
+  1: { title: 'Broken streetlight on Queen St near No. 42', status: 'in_progress', category: 'Streetlight', location: 'Queen St, Auckland CBD' },
+  2: { title: 'Deep pothole on Ponsonby Rd causing tyre damage', status: 'pending', category: 'Road', location: 'Ponsonby Rd' },
+  3: { title: 'Playground slide damaged at Victoria Park', status: 'resolved', category: 'Park', location: 'Victoria Park' },
+  4: { title: 'Footpath cracked and uneven near bus stop', status: 'pending', category: 'Footpath', location: 'Dominion Rd, Mount Eden' },
+  5: { title: 'Graffiti on public toilet block', status: 'resolved', category: 'Graffiti', location: 'Myers Park, Auckland' },
+  6: { title: 'Bus shelter roof collapsed — safety hazard', status: 'in_progress', category: 'Bus Stop', location: 'Great North Rd, Grey Lynn' },
+}
+
+// Inline public issue tracker — citizens paste their ticket ID to see the current status
+// without needing to sign in or visit the admin panel.
+function IssueTracker() {
+  const [ticketId, setTicketId] = useState('')
+  const [result, setResult] = useState(null)     // found ticket data
+  const [notFound, setNotFound] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    const id = ticketId.trim()
+    if (!id) return
+    setLoading(true)
+    setResult(null)
+    setNotFound(false)
+    try {
+      // Try the real API first — if it's offline, fall back to local mock data
+      const res = await requestsApi.get(id)
+      const t = res.data
+      if (t && t.id) {
+        setResult({ title: t.title, status: t.status, category: t.category, location: t.location_description })
+      } else {
+        setNotFound(true)
+      }
+    } catch {
+      // Backend offline — check our local mock lookup table
+      const numericId = parseInt(id, 10)
+      if (MOCK_LOOKUP[numericId]) {
+        setResult(MOCK_LOOKUP[numericId])
+      } else {
+        setNotFound(true)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      className="glass p-7 flex flex-col gap-5"
+      style={{ border: '1px solid rgba(102,126,234,0.25)' }}
+    >
+      <div>
+        <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Track Your Report</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+          Enter your ticket ID to check the current status of your report.
+        </p>
+      </div>
+
+      {/* Search form */}
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <input
+            type="text"
+            value={ticketId}
+            onChange={(e) => {
+              setTicketId(e.target.value)
+              setResult(null)
+              setNotFound(false)
+            }}
+            placeholder="e.g. 42 or DEMO-1234"
+            className="form-input pl-10 pr-4 text-sm"
+            maxLength={20}
+          />
+        </div>
+        <button type="submit" className="btn-primary px-5 text-sm gap-1.5" disabled={loading || !ticketId.trim()}>
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+          {loading ? 'Searching…' : 'Track'}
+        </button>
+      </form>
+
+      {/* Result card */}
+      {result && (
+        <div className="glass-sm p-4 flex flex-col gap-3 animate-slide-up">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+              {result.title}
+            </p>
+            <StatusBadge status={result.status} size="sm" />
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400">
+            {result.category && <span>Category: <strong className="text-slate-300">{result.category}</strong></span>}
+            {result.location  && <span>Location: <strong className="text-slate-300">{result.location}</strong></span>}
+          </div>
+          <p className="text-xs text-slate-500">
+            {result.status === 'resolved' || result.status === 'closed'
+              ? '✅ This issue has been resolved. Thank you for your report!'
+              : result.status === 'in_progress'
+                ? '🔧 A crew has been assigned and is working on this issue.'
+                : '⏳ Your report is in the queue and will be assigned to a crew soon.'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* Not found state */}
+      {notFound && (
+        <div className="flex items-center gap-2 text-sm text-rose-400 animate-slide-up">
+          <AlertCircle size={15} />
+          <span>No report found with that ID. Please double-check and try again.</span>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const STATS = [
   { label: 'Issues Reported', value: '1,240+', icon: MapPin, color: '#667eea', bg: 'rgba(102,126,234,0.1)' },
@@ -273,6 +395,27 @@ export default function HomePage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Public issue tracker section — lets citizens check their report status
+          without logging in, improving transparency and reducing support enquiries. */}
+      <section className="py-20 border-t border-white/[0.05]">
+        <div className="section-container">
+          <div className="max-w-2xl mx-auto flex flex-col gap-8">
+            <div className="text-center">
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#a855f7' }}>
+                Transparency
+              </span>
+              <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                Already submitted a report?
+              </h2>
+              <p className="mt-3" style={{ color: 'var(--text-secondary)' }}>
+                Use your ticket ID to see the latest status — no account needed.
+              </p>
+            </div>
+            <IssueTracker />
           </div>
         </div>
       </section>
