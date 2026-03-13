@@ -1,17 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Search, SlidersHorizontal, X, RefreshCw,
-  AlertTriangle, MapPin, List, LayoutGrid,
+  AlertTriangle, MapPin, List, LayoutGrid, Map,
 } from 'lucide-react'
-import { CATEGORIES, STATUSES, PAGE_SIZE } from '../utils/constants'
+import { CATEGORIES, STATUSES, PAGE_SIZE, CATEGORY_MAP } from '../utils/constants'
 import { requestsApi } from '../api/client'
 import IssueCard from '../components/IssueCard'
 import SkeletonCard from '../components/SkeletonCard'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 
-// fallback data when the backend isn't running yet
+// Fallback data when the backend isn't running yet.
+// lat/lng coordinates added so the Leaflet map view can place pins without a geocoding call.
 const MOCK_ISSUES = [
   {
     id: 1, title: 'Broken streetlight on Queen St near No. 42',
@@ -19,6 +20,7 @@ const MOCK_ISSUES = [
     description: 'The streetlight has been out for over two weeks. It creates a dangerous dark spot at night especially near the bus stop.',
     location_description: 'Queen St, Auckland CBD, near intersection with Wellesley St',
     reporter_name: 'Sarah K.', created_at: '2025-03-01T09:12:00Z', photo: null,
+    lat: -36.8493, lng: 174.7627,
   },
   {
     id: 2, title: 'Deep pothole on Ponsonby Rd causing tyre damage',
@@ -26,6 +28,7 @@ const MOCK_ISSUES = [
     description: 'There is a large pothole approximately 30cm wide and 10cm deep. Multiple vehicles have been damaged. It has been getting worse over the past month.',
     location_description: 'Ponsonby Rd, between Franklin Rd and Mackelvie St',
     reporter_name: null, created_at: '2025-03-03T14:30:00Z', photo: null,
+    lat: -36.8554, lng: 174.7473,
   },
   {
     id: 3, title: 'Playground slide damaged at Victoria Park',
@@ -33,6 +36,7 @@ const MOCK_ISSUES = [
     description: 'The main slide at the children\'s playground has a crack near the top that could cause injury to children.',
     location_description: 'Victoria Park, Victoria St West, Auckland',
     reporter_name: 'James T.', created_at: '2025-02-20T08:00:00Z', photo: null,
+    lat: -36.8533, lng: 174.7465,
   },
   {
     id: 4, title: 'Footpath cracked and uneven near bus stop',
@@ -40,6 +44,7 @@ const MOCK_ISSUES = [
     description: 'Section of footpath has lifted significantly due to tree roots. Accessibility is severely compromised for wheelchair users and the elderly.',
     location_description: 'Dominion Rd near Valley Rd bus stop, Mount Eden',
     reporter_name: 'Aroha W.', created_at: '2025-03-05T11:45:00Z', photo: null,
+    lat: -36.8762, lng: 174.7491,
   },
   {
     id: 5, title: 'Graffiti on public toilet block',
@@ -47,6 +52,7 @@ const MOCK_ISSUES = [
     description: 'Extensive graffiti covering the north and east walls of the toilet block. Some content is offensive.',
     location_description: 'Myers Park public toilets, Mayoral Dr, Auckland',
     reporter_name: null, created_at: '2025-02-25T16:20:00Z', photo: null,
+    lat: -36.8538, lng: 174.7620,
   },
   {
     id: 6, title: 'Bus shelter roof collapsed — safety hazard',
@@ -54,8 +60,103 @@ const MOCK_ISSUES = [
     description: 'The roof of the bus shelter has partially collapsed after last week\'s storm. Sharp metal edges are exposed.',
     location_description: 'Great North Rd stop, Grey Lynn, outside No. 165',
     reporter_name: 'Mohammed A.', created_at: '2025-03-06T07:30:00Z', photo: null,
+    lat: -36.8601, lng: 174.7379,
   },
 ]
+
+// STATUS_COLORS maps each ticket status to a hex colour used for the Leaflet marker.
+// These mirror the STATUS_MAP colours used in StatusBadge so the map stays consistent.
+const STATUS_COLORS = {
+  pending:     '#f59e0b',
+  in_progress: '#3b82f6',
+  resolved:    '#10b981',
+  closed:      '#64748b',
+}
+
+// IssueMap renders a Leaflet map with one coloured circle marker per issue.
+// We use plain Leaflet (not react-leaflet) and initialize it inside a useEffect
+// so it has access to the real DOM node after the first render.
+function IssueMap({ issues }) {
+  const mapRef = useRef(null)      // DOM node ref for the map container div
+  const leafletRef = useRef(null)  // Leaflet map instance, kept across re-renders
+
+  useEffect(() => {
+    // Dynamically import Leaflet so it doesn't break SSR / prerender builds
+    import('leaflet').then((L) => {
+      // Inject the Leaflet CSS once — checking avoids duplicates on HMR
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link')
+        link.id = 'leaflet-css'
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        document.head.appendChild(link)
+      }
+
+      if (!mapRef.current) return
+
+      // Destroy any previous instance so React StrictMode double-invoke doesn't crash
+      if (leafletRef.current) {
+        leafletRef.current.remove()
+        leafletRef.current = null
+      }
+
+      // Centre the map on central Auckland; zoom 13 shows most of the city
+      const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false })
+        .setView([-36.8607, 174.7628], 13)
+      leafletRef.current = map
+
+      // Use OpenStreetMap tiles — free, no API key required
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map)
+
+      // Add a circle marker for every issue that has coordinates.
+      // The popup shows the ticket title, status, and location.
+      issues.forEach((issue) => {
+        if (!issue.lat || !issue.lng) return
+        const color = STATUS_COLORS[issue.status] || '#667eea'
+        const cat   = CATEGORY_MAP[issue.category] || { label: issue.category }
+
+        L.circleMarker([issue.lat, issue.lng], {
+          radius: 9,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.85,
+        })
+          .addTo(map)
+          .bindPopup(`
+            <div style="min-width:180px;font-family:system-ui,sans-serif">
+              <p style="font-weight:700;font-size:13px;margin:0 0 4px">#${issue.id} ${issue.title}</p>
+              <p style="font-size:11px;color:#64748b;margin:0 0 2px">${cat.label}</p>
+              <p style="font-size:11px;color:${color};font-weight:600;margin:0 0 4px;text-transform:capitalize">
+                ${issue.status.replace('_', ' ')}
+              </p>
+              <p style="font-size:11px;color:#94a3b8;margin:0">${issue.location_description || ''}</p>
+            </div>
+          `)
+      })
+    })
+
+    // Cleanup: destroy the map when the component unmounts to prevent memory leaks
+    return () => {
+      if (leafletRef.current) {
+        leafletRef.current.remove()
+        leafletRef.current = null
+      }
+    }
+  }, [issues])
+
+  return (
+    <div
+      ref={mapRef}
+      className="w-full rounded-2xl overflow-hidden"
+      style={{ height: '520px', border: '1px solid var(--card-border)' }}
+    />
+  )
+}
 
 const ALL_STATUS_FILTER = { id: 'all', label: 'All Status' }
 
@@ -195,11 +296,13 @@ export default function ViewRequestsPage() {
           )}
         </button>
 
+        {/* View toggle: grid / list / map */}
         <div className="glass-sm flex rounded-xl overflow-hidden shrink-0">
           {[
-            { mode: 'grid', Icon: LayoutGrid },
-            { mode: 'list', Icon: List },
-          ].map(({ mode, Icon }) => (
+            { mode: 'grid', Icon: LayoutGrid, label: 'grid view' },
+            { mode: 'list', Icon: List,       label: 'list view' },
+            { mode: 'map',  Icon: Map,        label: 'map view'  },
+          ].map(({ mode, Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -208,7 +311,7 @@ export default function ViewRequestsPage() {
                   ? 'text-indigo-400 bg-indigo-400/10'
                   : 'text-slate-500 hover:text-slate-300'
               }`}
-              aria-label={`${mode} view`}
+              aria-label={label}
             >
               <Icon size={16} />
             </button>
@@ -302,8 +405,22 @@ export default function ViewRequestsPage() {
         </div>
       )}
 
-      {/* Content */}
-      {loading ? (
+      {/* Content — map view replaces the card grid entirely */}
+      {viewMode === 'map' && !loading ? (
+        <div className="flex flex-col gap-3">
+          {/* Legend */}
+          <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <span key={status} className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full inline-block" style={{ background: color }} />
+                <span className="capitalize">{status.replace('_', ' ')}</span>
+              </span>
+            ))}
+            <span className="ml-auto text-slate-500">Click a pin to see details</span>
+          </div>
+          <IssueMap issues={issues} />
+        </div>
+      ) : loading ? (
         <div className={`grid gap-4 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl'}`}>
           {Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
