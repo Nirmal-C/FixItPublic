@@ -4,41 +4,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Theme variables ───────────────────────────────────── */
+/* ─── Theme variables ─────────────────────────────────────── */
+
+/* Dark mode (default) — deep government navy */
 :root {
-  --bg-primary:    #0a0f1e;
-  --bg-secondary:  #0d1427;
-  --card-bg:       rgba(255,255,255,0.03);
-  --card-border:   rgba(255,255,255,0.07);
-  --input-bg:      rgba(255,255,255,0.04);
-  --input-border:  rgba(255,255,255,0.08);
-  --text-primary:  #f1f5f9;
-  --text-secondary:#94a3b8;
-  --text-muted:    #64748b;
-  --navbar-bg:     rgba(10,15,30,0.85);
-  --divider:       rgba(255,255,255,0.06);
-  --grid-line:     rgba(102,126,234,0.04);
+  --bg-primary:    #0C1829;
+  --bg-secondary:  #0E2040;
+  --card-bg:       #122040;
+  --card-border:   rgba(255,255,255,0.11);
+  --input-bg:      #0C1829;
+  --input-border:  rgba(255,255,255,0.16);
+  --text-primary:  #EDF2F7;
+  --text-secondary:#A8C4DA;   /* ↑ was #8BA8C4 — improved contrast */
+  --text-muted:    #7B9EB8;   /* ↑ was #5C7A96 — improved contrast */
+  --navbar-bg:     #002040;
+  --navbar-accent: #FFC72C;
+  --divider:       rgba(255,255,255,0.09);
+  --accent:        #0077C8;
+  --accent-hover:  #005EA3;
+  --accent-light:  rgba(0,119,200,0.13);
+  --accent-text:   #5AB5F0;   /* ↑ was #4DAAEE — improved contrast */
+  --hero-bg:       #0A1628;
 }
 
+/* Light mode — clean government white / light-grey */
 html.light {
-  --bg-primary:    #f1f5f9;
-  --bg-secondary:  #e2e8f0;
-  --card-bg:       rgba(255,255,255,0.75);
-  --card-border:   rgba(0,0,0,0.08);
-  --input-bg:      rgba(255,255,255,0.9);
-  --input-border:  rgba(0,0,0,0.12);
-  --text-primary:  #0f172a;
-  --text-secondary:#475569;
-  --text-muted:    #94a3b8;
-  --navbar-bg:     rgba(241,245,249,0.92);
-  --divider:       rgba(0,0,0,0.07);
-  --grid-line:     rgba(102,126,234,0.07);
+  --bg-primary:    #EEF2F6;
+  --bg-secondary:  #DDE5EE;
+  --card-bg:       #FFFFFF;
+  --card-border:   #C5D3DF;
+  --input-bg:      #FFFFFF;
+  --input-border:  #9DB8CC;
+  --text-primary:  #0D1C2E;
+  --text-secondary:#3A5E7C;
+  --text-muted:    #6E90A8;
+  --navbar-bg:     #002040;
+  --navbar-accent: #FFC72C;
+  --divider:       #C5D3DF;
+  --accent:        #0066BB;
+  --accent-hover:  #004E8F;
+  --accent-light:  rgba(0,102,187,0.08);
+  --accent-text:   #0066BB;
+  --hero-bg:       #EEF2F6;
 }
 
-/* ─── Base ─────────────────────────────────────────────── */
+/* ─── Base ───────────────────────────────────────────────── */
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
 
   body {
@@ -47,16 +59,15 @@ html.light {
     @apply font-sans m-0 min-h-screen overflow-x-hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: 'cv11', 'ss01';
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg-primary); }
-  ::-webkit-scrollbar-thumb { @apply bg-slate-400/40 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400/70; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-400/30 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400/50; }
 
-  ::selection { background: rgba(102, 126, 234, 0.4); color: #fff; }
+  ::selection { background: var(--accent); color: #fff; }
 
   h1, h2, h3, h4, h5, h6 { @apply font-semibold leading-tight; }
   a { @apply text-inherit no-underline; }
@@ -65,172 +76,217 @@ html.light {
   input, textarea, select { @apply font-sans; }
 }
 
-/* ─── Components ────────────────────────────────────────── */
+/* ─── Components ─────────────────────────────────────────── */
 @layer components {
 
-  /* Glass morphism */
+  /* ── Official government card — solid, no glass blur ── */
   .glass {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    @apply border border-white/[0.07] rounded-2xl;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded-lg;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
   }
   .glass-sm {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    @apply border border-white/10 rounded-xl;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
   }
   .glass-hover {
-    @apply transition-all duration-300;
+    @apply transition-all duration-200;
   }
   .glass-hover:hover {
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(102,126,234,0.15);
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
     transform: translateY(-2px);
   }
 
-  /* Gradient text */
-  .gradient-text {
-    background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 40%, #67e8f9 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  /* ── Government service tile (homepage service boxes) ── */
+  .service-tile {
+    @apply flex flex-col gap-4 p-6 rounded-lg transition-all duration-200;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-top: 3px solid var(--accent);
+  }
+  .service-tile:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+    transform: translateY(-2px);
   }
 
-  /* Buttons */
+  /* ── Government compact row (horizontal list view) ── */
+  .gov-row {
+    @apply flex items-start gap-4 p-4 rounded-lg transition-all duration-150;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--accent);
+  }
+  .gov-row:hover {
+    border-left-color: var(--accent-hover);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+
+  /* ── Buttons — government official style ── */
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white
-           transition-all duration-200 overflow-hidden cursor-pointer select-none border-0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+    @apply relative inline-flex items-center justify-center gap-2 px-5 py-2.5
+           rounded font-semibold text-sm text-white
+           transition-all duration-150 cursor-pointer select-none border-0;
+    background: var(--accent);
   }
   .btn-primary:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.55);
+    background: var(--accent-hover);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.20);
   }
-  .btn-primary:active { transform: translateY(0); }
-  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; transform: none; box-shadow: none; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; transform: none; }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
-           border border-white/10 text-slate-200 transition-all duration-200 cursor-pointer;
-    background: rgba(255,255,255,0.04);
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           rounded font-semibold text-sm transition-all duration-150 cursor-pointer;
+    background: transparent;
+    border: 1.5px solid var(--card-border);
+    color: var(--text-primary);
   }
   .btn-secondary:hover {
-    background: rgba(255,255,255,0.08);
-    @apply border-white/20 text-white;
-    transform: translateY(-1px);
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           text-slate-400 bg-transparent transition-all duration-200 cursor-pointer border-0;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2
+           rounded font-medium text-sm bg-transparent
+           transition-all duration-150 cursor-pointer border-0;
+    color: var(--text-secondary);
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.05); @apply text-slate-200; }
+  .btn-ghost:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
 
-  /* Form inputs */
+  /* ── Form inputs ── */
   .form-input {
-    @apply w-full px-4 py-3 rounded-xl text-sm text-slate-100 placeholder-slate-500
-           transition-all duration-200 outline-none;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    @apply w-full px-3.5 py-2.5 rounded text-sm outline-none transition-all duration-150;
+    background: var(--input-bg);
+    border: 1.5px solid var(--input-border);
+    color: var(--text-primary);
   }
+  .form-input::placeholder { color: var(--text-muted); }
   .form-input:focus {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(102, 126, 234, 0.6);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
   }
   .form-input.error {
-    border-color: rgba(239, 68, 68, 0.6);
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.10);
   }
   .form-input:disabled { @apply opacity-50 cursor-not-allowed; }
 
-  .form-label { @apply block text-sm font-medium text-slate-300 mb-1.5; }
-  .form-error { @apply flex items-center gap-1 mt-1.5 text-xs text-rose-400; }
-  .form-hint { @apply mt-1 text-xs text-slate-500; }
+  .form-label  { @apply block text-sm font-semibold mb-1.5; color: var(--text-secondary); }
+  .form-error  { @apply flex items-center gap-1 mt-1.5 text-xs text-red-500; }
+  .form-hint   { @apply mt-1 text-xs; color: var(--text-muted); }
 
-  /* Section container */
+  /* ── Section container ── */
   .section-container { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
 
-  /* Skeleton shimmer */
+  /* ── Skeleton shimmer ── */
   .skeleton {
     background: linear-gradient(90deg,
-      rgba(255,255,255,0.04) 25%,
-      rgba(255,255,255,0.08) 50%,
-      rgba(255,255,255,0.04) 75%
+      var(--card-bg) 25%,
+      var(--bg-secondary) 50%,
+      var(--card-bg) 75%
     );
     background-size: 200% 100%;
-    @apply animate-shimmer rounded-lg;
+    @apply animate-shimmer rounded;
   }
 
-  /* Filter pill */
+  /* ── Filter pill ── */
   .filter-pill {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium
+    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-sm font-medium
            transition-all duration-150 cursor-pointer border whitespace-nowrap;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
-    color: #94a3b8;
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-secondary);
   }
-  .filter-pill:hover { background: rgba(255,255,255,0.07); color: #e2e8f0; }
+  .filter-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
   .filter-pill.active {
-    background: rgba(102, 126, 234, 0.18);
-    border-color: rgba(102, 126, 234, 0.5);
-    color: #a5b4fc;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
   }
 
-  /* Category card */
+  /* ── Category card ── */
   .category-card {
-    @apply relative flex flex-col items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer
+    @apply relative flex flex-col items-center gap-3 p-5 rounded-lg border-2 cursor-pointer
            transition-all duration-200 select-none text-center;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: var(--card-bg);
+    border-color: var(--card-border);
   }
   .category-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(102, 126, 234, 0.4);
+    border-color: var(--accent);
+    background: var(--accent-light);
     transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
   .category-card.selected {
-    background: rgba(102, 126, 234, 0.1);
-    border-color: rgba(102, 126, 234, 0.7);
-    box-shadow: 0 0 20px rgba(102,126,234,0.2), inset 0 0 20px rgba(102,126,234,0.05);
+    background: var(--accent-light);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
   }
 
-  /* Upload zone */
+  /* ── Upload zone ── */
   .upload-zone {
-    @apply relative w-full rounded-2xl border-2 border-dashed cursor-pointer
+    @apply relative w-full rounded-lg border-2 border-dashed cursor-pointer
            transition-all duration-200 overflow-hidden;
-    border-color: rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.02);
+    border-color: var(--input-border);
+    background: var(--input-bg);
   }
   .upload-zone:hover, .upload-zone.drag-over {
-    border-color: rgba(102, 126, 234, 0.5);
-    background: rgba(102, 126, 234, 0.04);
+    border-color: var(--accent);
+    background: var(--accent-light);
   }
 
-  /* Step indicator */
+  /* ── Step indicator ── */
   .step-circle {
-    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shrink-0;
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+           transition-all duration-300 shrink-0;
   }
-  .step-circle.done { background: linear-gradient(135deg, #10b981, #059669); @apply text-white; }
-  .step-circle.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    @apply text-white;
-    box-shadow: 0 0 16px rgba(102,126,234,0.5);
+  .step-circle.done   { @apply bg-emerald-600 text-white; }
+  .step-circle.active { background: var(--accent); @apply text-white; }
+  .step-circle.pending {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    border: 1.5px solid var(--card-border);
   }
-  .step-circle.pending { @apply bg-white/[0.06] text-slate-500 border border-white/10; }
 
-  /* Navbar */
+  /* ── Issue card (vertical, grid view) ── */
+  .issue-card {
+    @apply flex flex-col gap-3 p-4 rounded-lg overflow-hidden transition-all duration-200;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--accent);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .issue-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    transform: translateY(-1px);
+  }
+
+  /* ── Badge ── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  /* ── Navbar — always government navy ── */
   .navbar {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(10, 15, 30, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--navbar-bg);
+    border-bottom: 3px solid var(--navbar-accent);
   }
 }
 
@@ -239,24 +295,9 @@ html.light {
   .text-balance { text-wrap: balance; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  .bg-grid {
-    background-image:
-      linear-gradient(rgba(102,126,234,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(102,126,234,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
 }
 
-/* ─── Orb animations ────────────────────────────────────── */
-@keyframes orb-pulse {
-  0%, 100% { opacity: 0.15; transform: scale(1); }
-  50% { opacity: 0.3; transform: scale(1.1); }
-}
-.orb-1 { animation: orb-pulse 8s ease-in-out infinite; }
-.orb-2 { animation: orb-pulse 10s ease-in-out infinite 2s; }
-.orb-3 { animation: orb-pulse 12s ease-in-out infinite 4s; }
-
-/* ─── Toast container ───────────────────────────────────── */
+/* ─── Toast container ────────────────────────────────────── */
 .toast-container {
   position: fixed;
   bottom: 1.5rem;
@@ -269,145 +310,76 @@ html.light {
 }
 .toast { pointer-events: all; }
 
-/* ─── Light mode overrides ──────────────────────────────── */
+/* ─── Light-mode overrides ───────────────────────────────── */
 
-/* Background + surface */
-html.light body { background-color: var(--bg-primary); }
+html.light body  { background-color: var(--bg-primary); }
 html.light #root { background-color: var(--bg-primary); }
 
-/* Glass cards */
-html.light .glass {
-  background: var(--card-bg) !important;
-  border-color: var(--card-border) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-html.light .glass-sm {
-  background: var(--card-bg) !important;
-  border-color: var(--card-border) !important;
-}
-html.light .glass-hover:hover {
-  background: rgba(255,255,255,0.9) !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(102,126,234,0.2) !important;
-}
-
-/* Navbar */
-html.light .navbar {
-  background: var(--navbar-bg) !important;
-  border-bottom-color: var(--card-border) !important;
-}
-
-/* Text colour overrides */
-html.light .text-slate-100 { color: var(--text-primary) !important; }
-html.light .text-slate-200 { color: #1e293b !important; }
-html.light .text-slate-300 { color: #334155 !important; }
+/* Text: Tailwind slate-* used in legacy components */
+html.light .text-slate-100 { color: var(--text-primary)   !important; }
+html.light .text-slate-200 { color: #1e293b               !important; }
+html.light .text-slate-300 { color: var(--text-secondary) !important; }
 html.light .text-slate-400 { color: var(--text-secondary) !important; }
-html.light .text-slate-500 { color: var(--text-muted) !important; }
-html.light .text-slate-600 { color: #94a3b8 !important; }
+html.light .text-slate-500 { color: var(--text-muted)     !important; }
+html.light .text-slate-600 { color: #94a3b8               !important; }
 
-/* Form inputs */
-html.light .form-input {
-  background: var(--input-bg) !important;
-  border-color: var(--input-border) !important;
+/* Cards */
+html.light .glass    { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .glass-sm { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .glass-hover:hover {
+  background: var(--card-bg)   !important;
+  border-color: var(--accent)  !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+}
+html.light .service-tile { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .gov-row  { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .issue-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; border-left-color: var(--accent) !important; }
+
+/* Buttons */
+html.light .btn-secondary {
+  background: transparent !important;
+  border-color: var(--card-border) !important;
   color: var(--text-primary) !important;
 }
-html.light .form-input::placeholder { color: #94a3b8 !important; }
-html.light .form-input:focus {
-  background: #fff !important;
-  border-color: rgba(102,126,234,0.6) !important;
-}
+html.light .btn-secondary:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+html.light .btn-ghost { color: var(--text-secondary) !important; }
+html.light .btn-ghost:hover { background: var(--accent-light) !important; color: var(--accent) !important; }
+
+/* Forms */
+html.light .form-input { background: var(--input-bg) !important; border-color: var(--input-border) !important; color: var(--text-primary) !important; }
+html.light .form-input::placeholder { color: var(--text-muted) !important; }
+html.light .form-input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-light) !important; }
 
 /* Category cards */
-html.light .category-card {
-  background: rgba(255,255,255,0.6) !important;
-  border-color: rgba(0,0,0,0.1) !important;
-}
-html.light .category-card:hover {
-  background: rgba(255,255,255,0.95) !important;
-  border-color: rgba(102,126,234,0.4) !important;
-}
-html.light .category-card.selected {
-  background: rgba(102,126,234,0.08) !important;
-  border-color: rgba(102,126,234,0.7) !important;
-}
+html.light .category-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .category-card:hover  { background: var(--accent-light) !important; border-color: var(--accent) !important; }
+html.light .category-card.selected { background: var(--accent-light) !important; border-color: var(--accent) !important; }
 
 /* Upload zone */
-html.light .upload-zone {
-  background: rgba(255,255,255,0.5) !important;
-  border-color: rgba(0,0,0,0.15) !important;
-}
-html.light .upload-zone:hover {
-  background: rgba(102,126,234,0.04) !important;
-}
+html.light .upload-zone { background: var(--input-bg) !important; border-color: var(--input-border) !important; }
+html.light .upload-zone:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; }
 
 /* Filter pills */
-html.light .filter-pill {
-  background: rgba(255,255,255,0.6) !important;
-  border-color: rgba(0,0,0,0.1) !important;
-  color: #475569 !important;
-}
-html.light .filter-pill:hover {
-  background: rgba(255,255,255,0.95) !important;
-  color: #0f172a !important;
-}
-html.light .filter-pill.active {
-  background: rgba(102,126,234,0.12) !important;
-  border-color: rgba(102,126,234,0.5) !important;
-  color: #4f46e5 !important;
-}
+html.light .filter-pill { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-secondary) !important; }
+html.light .filter-pill:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+html.light .filter-pill.active { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 
 /* Skeleton */
-html.light .skeleton {
-  background: linear-gradient(90deg,
-    rgba(0,0,0,0.04) 25%,
-    rgba(0,0,0,0.08) 50%,
-    rgba(0,0,0,0.04) 75%
-  ) !important;
-}
+html.light .skeleton { background: linear-gradient(90deg, var(--card-bg) 25%, var(--bg-secondary) 50%, var(--card-bg) 75%) !important; }
 
-/* Button secondary */
-html.light .btn-secondary {
-  background: rgba(255,255,255,0.8) !important;
-  border-color: rgba(0,0,0,0.12) !important;
-  color: #334155 !important;
-}
-html.light .btn-secondary:hover {
-  background: #fff !important;
-  border-color: rgba(0,0,0,0.2) !important;
-  color: #0f172a !important;
-}
-
-/* Ghost button */
-html.light .btn-ghost { color: #475569 !important; }
-html.light .btn-ghost:hover { background: rgba(0,0,0,0.05) !important; color: #0f172a !important; }
-
-/* bg-grid */
-html.light .bg-grid {
-  background-image:
-    linear-gradient(rgba(102,126,234,0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(102,126,234,0.07) 1px, transparent 1px) !important;
-}
-
-/* Ambient orbs — subtler in light mode */
-html.light .orb-1,
-html.light .orb-2,
-html.light .orb-3 { opacity: 0.4 !important; }
-
-/* Hero section bg */
-html.light section { background: transparent; }
+/* Step circles */
+html.light .step-circle.pending { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-muted) !important; }
 
 /* Dividers */
 html.light .border-white\/\[0\.06\] { border-color: var(--divider) !important; }
+html.light .border-white\/\[0\.05\] { border-color: var(--divider) !important; }
 html.light .border-t { border-color: var(--divider) !important; }
+html.light .border-b { border-color: var(--divider) !important; }
 
-/* Step circles */
-html.light .step-circle.pending {
-  background: rgba(0,0,0,0.05) !important;
-  border-color: rgba(0,0,0,0.1) !important;
-  color: #94a3b8 !important;
-}
-
-/* Mobile nav background */
-html.light nav [style*="rgba(10,15,30"] {
-  background: rgba(241,245,249,0.97) !important;
-}
+/* ─── Legacy indigo/purple → government blue overrides ─── */
+.text-indigo-400,
+.text-indigo-300,
+.text-indigo-200  { color: var(--accent-text) !important; }
+.bg-indigo-400\/10 { background-color: var(--accent-light) !important; }
+.border-indigo-500\/50,
+.border-indigo-400  { border-color: var(--accent) !important; }
