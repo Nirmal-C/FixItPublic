@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Zap, Trees, Construction, ArrowRight,
-  ShieldCheck, MapPin, Bell, Users,
-  ChevronRight, Star, Clock, CheckCircle2,
-  Search, AlertCircle, Loader2,
+  Construction, ArrowRight, Building2,
+  ShieldCheck, MapPin, Bell, Users, Clock,
+  CheckCircle2, Search, AlertCircle, Loader2,
+  ChevronRight, FileText, Phone, Zap,
 } from 'lucide-react'
 import { requestsApi } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 
-// Same mock records used on the ViewRequestsPage — lets the tracker work in demo mode
-// when the backend is offline. In Sprint 3 this will call the live API.
+// Mock data for ticket lookup when the backend isn't available
 const MOCK_LOOKUP = {
   1: { title: 'Broken streetlight on Queen St near No. 42', status: 'in_progress', category: 'Streetlight', location: 'Queen St, Auckland CBD' },
   2: { title: 'Deep pothole on Ponsonby Rd causing tyre damage', status: 'pending', category: 'Road', location: 'Ponsonby Rd' },
@@ -20,280 +19,379 @@ const MOCK_LOOKUP = {
   6: { title: 'Bus shelter roof collapsed — safety hazard', status: 'in_progress', category: 'Bus Stop', location: 'Great North Rd, Grey Lynn' },
 }
 
-// Inline public issue tracker — citizens paste their ticket ID to see the current status
-// without needing to sign in or visit the admin panel.
+// Inline ticket tracker widget used in both the hero panel and the services section
 function IssueTracker() {
   const [ticketId, setTicketId] = useState('')
-  const [result, setResult] = useState(null)     // found ticket data
+  const [result,   setResult]   = useState(null)
   const [notFound, setNotFound] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading,  setLoading]  = useState(false)
 
+  // Try the real API first, fall back to mock data if backend is offline
   const handleSearch = async (e) => {
     e.preventDefault()
     const id = ticketId.trim()
     if (!id) return
-    setLoading(true)
-    setResult(null)
-    setNotFound(false)
+    setLoading(true); setResult(null); setNotFound(false)
     try {
-      // Try the real API first — if it's offline, fall back to local mock data
       const res = await requestsApi.get(id)
       const t = res.data
-      if (t && t.id) {
-        setResult({ title: t.title, status: t.status, category: t.category, location: t.location_description })
-      } else {
-        setNotFound(true)
-      }
+      if (t?.id) setResult({ title: t.title, status: t.status, category: t.category, location: t.location_description })
+      else setNotFound(true)
     } catch {
-      // Backend offline — check our local mock lookup table
-      const numericId = parseInt(id, 10)
-      if (MOCK_LOOKUP[numericId]) {
-        setResult(MOCK_LOOKUP[numericId])
-      } else {
-        setNotFound(true)
-      }
-    } finally {
-      setLoading(false)
-    }
+      const num = parseInt(id, 10)
+      if (MOCK_LOOKUP[num]) setResult(MOCK_LOOKUP[num])
+      else setNotFound(true)
+    } finally { setLoading(false) }
   }
 
   return (
-    <div
-      className="glass p-7 flex flex-col gap-5"
-      style={{ border: '1px solid rgba(102,126,234,0.25)' }}
-    >
-      <div>
-        <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Track Your Report</h3>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Enter your ticket ID to check the current status of your report.
-        </p>
-      </div>
-
-      {/* Search form */}
+    <div className="flex flex-col gap-3">
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
             value={ticketId}
-            onChange={(e) => {
-              setTicketId(e.target.value)
-              setResult(null)
-              setNotFound(false)
-            }}
-            placeholder="e.g. 42 or DEMO-1234"
-            className="form-input pl-10 pr-4 text-sm"
+            onChange={(e) => { setTicketId(e.target.value); setResult(null); setNotFound(false) }}
+            placeholder="Enter ticket ID (e.g. 42)"
+            className="form-input pl-9 text-sm"
             maxLength={20}
           />
         </div>
-        <button type="submit" className="btn-primary px-5 text-sm gap-1.5" disabled={loading || !ticketId.trim()}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-          {loading ? 'Searching…' : 'Track'}
+        <button type="submit" className="btn-primary px-4 text-sm gap-1.5" disabled={loading || !ticketId.trim()}>
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+          {loading ? '…' : 'Track'}
         </button>
       </form>
 
-      {/* Result card */}
       {result && (
-        <div className="glass-sm p-4 flex flex-col gap-3 animate-slide-up">
+        <div className="rounded p-3 flex flex-col gap-2 animate-slide-up" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
-              {result.title}
-            </p>
+            <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{result.title}</p>
             <StatusBadge status={result.status} size="sm" />
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400">
-            {result.category && <span>Category: <strong className="text-slate-300">{result.category}</strong></span>}
-            {result.location  && <span>Location: <strong className="text-slate-300">{result.location}</strong></span>}
+          <div className="flex flex-wrap gap-x-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {result.category && <span>Category: <strong>{result.category}</strong></span>}
+            {result.location  && <span>Location: <strong>{result.location}</strong></span>}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {result.status === 'resolved' || result.status === 'closed'
-              ? '✅ This issue has been resolved. Thank you for your report!'
+              ? '✅ Resolved — thank you for your report!'
               : result.status === 'in_progress'
-                ? '🔧 A crew has been assigned and is working on this issue.'
-                : '⏳ Your report is in the queue and will be assigned to a crew soon.'
-            }
+                ? '🔧 A maintenance crew is working on this.'
+                : '⏳ In the queue — will be assigned soon.'}
           </p>
         </div>
       )}
-
-      {/* Not found state */}
       {notFound && (
-        <div className="flex items-center gap-2 text-sm text-rose-400 animate-slide-up">
-          <AlertCircle size={15} />
-          <span>No report found with that ID. Please double-check and try again.</span>
+        <div className="flex items-center gap-2 text-sm animate-slide-up" style={{ color: '#ef4444' }}>
+          <AlertCircle size={14} /><span>No report found with that ID.</span>
         </div>
       )}
     </div>
   )
 }
 
+// Service tile data — each entry maps to one card in the services section
+const SERVICES = [
+  {
+    to: '/report', icon: FileText, color: '#0077C8', bg: 'rgba(0,119,200,0.10)', topColor: '#0077C8',
+    maori: 'Pūrongo i Tētahi Take',
+    title: 'Report an Issue',
+    description: 'Submit a new maintenance request for broken streetlights, damaged footpaths, graffiti, or any public facility problem.',
+    linkLabel: 'Submit Report',
+  },
+  {
+    to: '/requests', icon: MapPin, color: '#10b981', bg: 'rgba(16,185,129,0.10)', topColor: '#10b981',
+    maori: 'Tirohia Ngā Pūrongo',
+    title: 'View Community Reports',
+    description: 'Browse all public facility reports in your area. Filter by category, status, or location.',
+    linkLabel: 'Browse Reports',
+  },
+  {
+    to: null, icon: Search, color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', topColor: '#f59e0b',
+    maori: 'Aroturuki i Tō Pūrongo',
+    title: 'Track Your Report',
+    description: 'Enter your ticket ID to check the latest progress. No login required.',
+    linkLabel: null,
+  },
+]
+
+// The three steps shown in the "How It Works" stepper
+const HOW_IT_WORKS = [
+  {
+    num: '01', icon: Zap, color: '#0077C8',
+    maori: 'Kite i te Take',
+    title: 'Spot the Issue',
+    description: 'Notice a broken streetlight, damaged footpath, graffiti, or any public facility issue in your area.',
+  },
+  {
+    num: '02', icon: Construction, color: '#10b981',
+    maori: 'Tuku Pūrongo',
+    title: 'Submit a Report',
+    description: 'Fill out our simple form with a description, location, and optional photo. Takes under 2 minutes.',
+  },
+  {
+    num: '03', icon: CheckCircle2, color: '#f59e0b',
+    maori: 'Ka Mahi te Kaunihera',
+    title: 'Council Acts',
+    description: 'Auckland Council reviews your report, assigns a maintenance crew, and updates you in real time.',
+  },
+]
+
 const STATS = [
-  { label: 'Issues Reported', value: '1,240+', icon: MapPin, color: '#667eea', bg: 'rgba(102,126,234,0.1)' },
-  { label: 'Issues Resolved', value: '980+', icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  { label: 'Avg. Response Time', value: '3 days', icon: Clock, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { label: 'Community Members', value: '5,000+', icon: Users, color: '#a855f7', bg: 'rgba(168,85,247,0.1)' },
+  { label: 'Issues Reported',    value: '1,240+', icon: MapPin,       color: '#0077C8', bg: 'rgba(0,119,200,0.10)' },
+  { label: 'Issues Resolved',    value: '980+',   icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.10)' },
+  { label: 'Avg. Response Time', value: '3 days', icon: Clock,        color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
+  { label: 'Community Members',  value: '5,000+', icon: Users,        color: '#0066BB', bg: 'rgba(0,102,187,0.10)' },
 ]
 
 const FEATURES = [
-  {
-    icon: MapPin,
-    title: 'Location-Aware Reporting',
-    description: 'Pin the exact location of any public facility issue on an interactive map so crews can find it instantly.',
-    color: '#667eea',
-    bg: 'rgba(102,126,234,0.1)',
-  },
-  {
-    icon: Bell,
-    title: 'Real-Time Notifications',
-    description: 'Get email updates when your report is acknowledged, assigned, and resolved by the council team.',
-    color: '#06b6d4',
-    bg: 'rgba(6,182,212,0.1)',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Privacy-First Design',
-    description: 'Report anonymously or with your details. We never share your personal information without consent.',
-    color: '#10b981',
-    bg: 'rgba(16,185,129,0.1)',
-  },
-  {
-    icon: Users,
-    title: 'Community Driven',
-    description: 'Built in alignment with Te Tiriti o Waitangi — partnership, participation, and protection for all.',
-    color: '#a855f7',
-    bg: 'rgba(168,85,247,0.1)',
-  },
+  { icon: MapPin,      maori: 'Māramatanga Wāhi',   title: 'Location-Aware',   description: 'Pinpoint the exact location on a map so maintenance crews find the issue instantly.',             color: '#0077C8', bg: 'rgba(0,119,200,0.10)' },
+  { icon: Bell,        maori: 'Whakahou Tūnga',      title: 'Status Updates',   description: 'Track your report from Pending through to Resolved — no need to phone the council.',              color: '#10b981', bg: 'rgba(16,185,129,0.10)' },
+  { icon: ShieldCheck, maori: 'Tiaki Tūmataiti',     title: 'Privacy-First',    description: 'Report anonymously or with your name. Personal information is never shared without your consent.', color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
+  { icon: Users,       maori: 'Nā te Hapori',        title: 'Community Driven', description: 'Built in alignment with Te Tiriti o Waitangi — partnership, participation, and protection.',       color: '#0066BB', bg: 'rgba(0,102,187,0.10)' },
 ]
 
-const HOW_IT_WORKS = [
-  {
-    step: '01',
-    title: 'Spot the Issue',
-    description: 'Find a broken streetlight, damaged footpath, or any public facility problem.',
-    icon: Zap,
-    color: '#667eea',
-  },
-  {
-    step: '02',
-    title: 'Submit a Report',
-    description: 'Fill out our simple form with a description, location, and optional photo.',
-    icon: Construction,
-    color: '#06b6d4',
-  },
-  {
-    step: '03',
-    title: 'Track Progress',
-    description: 'Monitor your report status from Pending through to Resolved in real time.',
-    icon: CheckCircle2,
-    color: '#10b981',
-  },
-]
-
-const RECENT_CATEGORIES = [
-  { label: 'Streetlights', icon: Zap, count: 142, color: '#f59e0b' },
-  { label: 'Parks', icon: Trees, count: 98, color: '#10b981' },
-  { label: 'Roads', icon: Construction, count: 210, color: '#ef4444' },
-]
+// Reusable bilingual section header — used across all sections on this page.
+// Shows English and Māori label side by side with an accent stripe on the left.
+function SectionLabel({ en, mi, heading }) {
+  return (
+    <div className="flex items-center gap-3 mb-8">
+      <div className="w-1 h-6 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+          {en} <span className="font-normal opacity-60">· {mi}</span>
+        </p>
+        <h2 className="text-xl font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>{heading}</h2>
+      </div>
+    </div>
+  )
+}
 
 export default function HomePage() {
   return (
     <div className="animate-fade-in">
 
-      <section className="relative pt-24 pb-20 overflow-hidden">
-        <div className="section-container relative z-10">
-          <div className="flex flex-col items-center text-center gap-8 max-w-3xl mx-auto">
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold text-indigo-300 animate-slide-up"
-              style={{ background: 'rgba(102,126,234,0.1)', borderColor: 'rgba(102,126,234,0.3)' }}
-            >
-              <Star size={12} fill="currentColor" />
-              Public Facility Maintenance Platform — Aotearoa New Zealand
-            </div>
+      {/* Hero */}
+      <section style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>
+        <div className="section-container py-14">
+          <div className="grid lg:grid-cols-5 gap-10 items-start">
 
-            <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              <h1
-                className="text-5xl sm:text-6xl font-extrabold leading-[1.1] tracking-tight text-balance"
-                style={{ color: 'var(--text-primary)' }}
+            {/* Left column — heading, CTAs, quick stats */}
+            <div className="lg:col-span-3 flex flex-col gap-6 animate-slide-up">
+              <span
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded self-start text-xs font-semibold"
+                style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent-text)' }}
               >
-                Report Public Issues.{' '}
-                <span
-                  style={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 40%, #06b6d4 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
+                <Building2 size={11} />
+                Auckland City Infrastructure Services
+                <span className="opacity-60 font-normal">· Ngā Ratonga Hanganga o Tāmaki Makaurau</span>
+              </span>
+
+              <div>
+                <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.1] tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  Public Facility<br />
+                  <span style={{ color: 'var(--accent)' }}>Maintenance Portal</span>
+                </h1>
+                <p className="text-xs italic mt-1" style={{ color: 'var(--text-muted)' }}>
+                  He Pūnaha Kaitiaki Tūāhu Tūmatanui
+                </p>
+                <p className="mt-3 text-base leading-relaxed max-w-lg" style={{ color: 'var(--text-secondary)' }}>
+                  Report broken streetlights, damaged footpaths, graffiti, and infrastructure issues
+                  directly to Auckland Council maintenance teams.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  to="/report"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded font-bold text-sm transition-all duration-150"
+                  style={{ background: '#FFC72C', color: '#002040' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#FFD45C'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#FFC72C'}
                 >
-                  Drive Real Change.
-                </span>
-              </h1>
-              <p className="mt-5 text-lg leading-relaxed text-balance max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-                FixItPublic connects communities with local councils to report, track, and resolve
-                public facility maintenance issues — from broken streetlights to damaged footpaths.
-              </p>
-            </div>
+                  <FileText size={15} />
+                  Report an Issue
+                  <ArrowRight size={14} />
+                </Link>
+                <Link to="/requests" className="btn-secondary px-7 py-3 text-sm">
+                  Browse Reports
+                </Link>
+              </div>
 
-            <div
-              className="flex flex-col sm:flex-row items-center gap-4 animate-slide-up"
-              style={{ animationDelay: '0.2s' }}
-            >
-              <Link to="/report" className="btn-primary text-base px-8 py-4 gap-2">
-                Report an Issue
-                <ArrowRight size={18} />
-              </Link>
-              <Link to="/requests" className="btn-secondary text-base px-8 py-4">
-                Browse Reports
-              </Link>
-            </div>
-
-            <div
-              className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in"
-              style={{ animationDelay: '0.3s' }}
-            >
-              {RECENT_CATEGORIES.map((cat) => {
-                const Icon = cat.icon
-                return (
-                  <div key={cat.label} className="flex items-center gap-2 text-sm text-slate-400">
-                    <Icon size={14} style={{ color: cat.color }} />
-                    <span className="font-semibold text-slate-200">{cat.count}</span>
-                    <span>{cat.label} reported</span>
+              {/* Quick stats strip at the bottom of the hero */}
+              <div className="grid grid-cols-3 gap-5 pt-5 mt-1" style={{ borderTop: '1px solid var(--divider)' }}>
+                {[
+                  { label: 'Reports Filed', value: '1,240+' },
+                  { label: 'Resolved',      value: '980+' },
+                  { label: 'Avg. Response', value: '3 days' },
+                ].map((s) => (
+                  <div key={s.label}>
+                    <p className="text-xl sm:text-2xl font-extrabold leading-none" style={{ color: 'var(--accent)' }}>{s.value}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
+
+            {/* Right column — ticket tracker panel */}
+            <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <div className="glass overflow-hidden">
+                <div
+                  className="px-5 py-4 flex items-center gap-3"
+                  style={{ backgroundColor: '#002040', borderBottom: '2px solid #FFC72C' }}
+                >
+                  <Search size={15} className="text-white/60" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Track Your Report</h3>
+                    <p className="text-[10px] text-white/50 mt-0.5 italic">Aroturuki i Tō Pūrongo · No login required</p>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <IssueTracker />
+                  <p className="text-xs mt-4 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                    <ShieldCheck size={11} />
+                    Your data is kept private and secure.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs px-1" style={{ color: 'var(--text-muted)' }}>
+                <Phone size={11} />
+                <span>Emergency? Call: <strong style={{ color: 'var(--text-secondary)' }}>09 301 0101</strong></span>
+              </div>
+            </div>
+
           </div>
         </div>
-
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse, rgba(102,126,234,0.12) 0%, transparent 70%)' }}
-        />
       </section>
 
-      <section className="py-12 border-y border-white/[0.05]">
+      {/* Services */}
+      <section className="py-14" style={{ borderBottom: '1px solid var(--divider)' }}>
         <div className="section-container">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {STATS.map((stat) => {
-              const Icon = stat.icon
+          <SectionLabel en="Our Services" mi="Ā Mātou Ratonga" heading="How can we help you today?" />
+
+          <div className="grid sm:grid-cols-3 gap-5">
+            {SERVICES.map((svc, i) => {
+              const Icon = svc.icon
               return (
                 <div
-                  key={stat.label}
-                  className="glass p-6 flex flex-col gap-3 hover:scale-[1.02] transition-transform duration-200"
+                  key={svc.title}
+                  className="service-tile animate-slide-up"
+                  style={{ animationDelay: `${i * 0.08}s`, borderTopColor: svc.topColor }}
                 >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded flex items-center justify-center shrink-0" style={{ background: svc.bg }}>
+                      <Icon size={20} style={{ color: svc.color }} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] italic" style={{ color: svc.color }}>{svc.maori}</p>
+                      <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{svc.title}</h3>
+                    </div>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{svc.description}</p>
+                  {svc.to ? (
+                    <Link
+                      to={svc.to}
+                      className="inline-flex items-center gap-1 text-xs font-semibold transition-colors self-start mt-1"
+                      style={{ color: svc.color }}
+                    >
+                      {svc.linkLabel} <ChevronRight size={12} />
+                    </Link>
+                  ) : (
+                    // Third tile embeds the tracker widget directly instead of a link
+                    <div className="mt-1 pt-3" style={{ borderTop: '1px solid var(--divider)' }}>
+                      <IssueTracker />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-14" style={{ borderBottom: '1px solid var(--divider)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="section-container">
+          <SectionLabel en="Simple Process" mi="He Ara Māmā" heading="Three steps to get it fixed" />
+
+          {/*
+            Desktop step indicator — a flex row where each non-last item
+            is flex-1 so the gradient connector line fills the space between circles.
+            On mobile this row is hidden and the circles render above each content block instead.
+          */}
+          <div className="hidden sm:flex items-center mb-10">
+            {HOW_IT_WORKS.map((step, i) => (
+              <div
+                key={step.num}
+                className={`flex items-center ${i < HOW_IT_WORKS.length - 1 ? 'flex-1' : ''}`}
+              >
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white shrink-0"
+                  style={{ background: step.color }}
+                >
+                  {step.num}
+                </div>
+                {i < HOW_IT_WORKS.length - 1 && (
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: stat.bg }}
-                  >
+                    className="flex-1 h-0.5"
+                    style={{
+                      background: `linear-gradient(90deg, ${step.color}, ${HOW_IT_WORKS[i + 1].color})`,
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Content grid — 3 columns on desktop, stacked on mobile */}
+          <div className="grid sm:grid-cols-3 gap-8">
+            {HOW_IT_WORKS.map((step, i) => (
+              <div
+                key={step.num}
+                className="flex flex-col gap-3 animate-slide-up"
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                {/* Circle only shows here on mobile since desktop has the row above */}
+                <div
+                  className="sm:hidden w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white shrink-0"
+                  style={{ background: step.color }}
+                >
+                  {step.num}
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold italic tracking-wide mb-0.5" style={{ color: step.color }}>
+                    {step.maori}
+                  </p>
+                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {step.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed mt-2" style={{ color: 'var(--text-secondary)' }}>
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats strip */}
+      <section className="py-10" style={{ borderBottom: '1px solid var(--divider)' }}>
+        <div className="section-container">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {STATS.map((stat, i) => {
+              const Icon = stat.icon
+              return (
+                <div key={stat.label} className="glass p-5 flex items-center gap-4 animate-slide-up" style={{ animationDelay: `${i * 0.06}s` }}>
+                  <div className="w-11 h-11 rounded flex items-center justify-center shrink-0" style={{ background: stat.bg }}>
                     <Icon size={20} style={{ color: stat.color }} />
                   </div>
                   <div>
-                    <p
-                      className="text-2xl font-extrabold"
-                      style={{ color: stat.color }}
-                    >
-                      {stat.value}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{stat.label}</p>
+                    <p className="text-2xl font-extrabold leading-none" style={{ color: stat.color }}>{stat.value}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
                   </div>
                 </div>
               )
@@ -302,96 +400,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20">
+      {/* Features */}
+      <section className="py-14" style={{ borderBottom: '1px solid var(--divider)', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="section-container">
-          <div className="text-center mb-12">
-            <span
-              className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: '#667eea' }}
-            >
-              Simple Process
-            </span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-              How it works
-            </h2>
-            <p className="mt-3 max-w-lg mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              Three simple steps to turn a community problem into a council priority.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-6 relative">
-            <div
-              className="hidden sm:block absolute top-[52px] left-[calc(16.67%+20px)] right-[calc(16.67%+20px)] h-px"
-              style={{ background: 'linear-gradient(90deg, rgba(102,126,234,0.3), rgba(6,182,212,0.3))' }}
-            />
-
-            {HOW_IT_WORKS.map((step, i) => {
-              const Icon = step.icon
-              return (
-                <div key={step.step} className="glass p-7 flex flex-col gap-4 relative animate-slide-up"
-                  style={{ animationDelay: `${i * 0.1}s` }}>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, ${step.color}20, ${step.color}10)`,
-                        border: `1px solid ${step.color}40`,
-                      }}
-                    >
-                      <Icon size={22} style={{ color: step.color }} />
-                    </div>
-                    <span
-                      className="text-6xl font-black select-none leading-none"
-                      style={{
-                        background: `linear-gradient(135deg, ${step.color}, ${step.color}80)`,
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        filter: `drop-shadow(0 0 12px ${step.color}50)`,
-                      }}
-                    >
-                      {step.step}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{step.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{step.description}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 border-t border-white/[0.05]">
-        <div className="section-container">
-          <div className="text-center mb-12">
-            <span
-              className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: '#06b6d4' }}
-            >
-              Why FixItPublic
-            </span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-              Built for every community
-            </h2>
-          </div>
+          <SectionLabel en="Platform Features" mi="Ngā Āhuatanga" heading="Built for every community" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURES.map((feat, i) => {
               const Icon = feat.icon
               return (
-                <div
-                  key={feat.title}
-                  className="glass glass-hover p-6 flex flex-col gap-4 animate-slide-up"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{ background: feat.bg }}
-                  >
-                    <Icon size={20} style={{ color: feat.color }} />
+                <div key={feat.title} className="glass glass-hover p-5 flex flex-col gap-3 animate-slide-up" style={{ animationDelay: `${i * 0.07}s` }}>
+                  <div className="w-10 h-10 rounded flex items-center justify-center" style={{ background: feat.bg }}>
+                    <Icon size={18} style={{ color: feat.color }} />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-100">{feat.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">{feat.description}</p>
+                  <div>
+                    <p className="text-[10px] italic mb-0.5" style={{ color: feat.color }}>{feat.maori}</p>
+                    <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{feat.title}</h3>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{feat.description}</p>
                 </div>
               )
             })}
@@ -399,56 +424,43 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Public issue tracker section — lets citizens check their report status
-          without logging in, improving transparency and reducing support enquiries. */}
-      <section className="py-20 border-t border-white/[0.05]">
-        <div className="section-container">
-          <div className="max-w-2xl mx-auto flex flex-col gap-8">
-            <div className="text-center">
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#a855f7' }}>
-                Transparency
-              </span>
-              <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-                Already submitted a report?
-              </h2>
-              <p className="mt-3" style={{ color: 'var(--text-secondary)' }}>
-                Use your ticket ID to see the latest status — no account needed.
-              </p>
-            </div>
-            <IssueTracker />
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20">
+      {/* CTA band — dark navy with gold accent to stand out from the rest of the page */}
+      <section className="py-14">
         <div className="section-container">
           <div
-            className="relative rounded-3xl overflow-hidden p-10 sm:p-16 text-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(102,126,234,0.15) 0%, rgba(168,85,247,0.1) 50%, rgba(6,182,212,0.08) 100%)',
-              border: '1px solid rgba(102,126,234,0.25)',
-            }}
+            className="rounded-lg p-10 sm:p-12 flex flex-col sm:flex-row items-center justify-between gap-8"
+            style={{ backgroundColor: '#002040', borderLeft: '4px solid #FFC72C' }}
           >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse at center, rgba(102,126,234,0.12) 0%, transparent 70%)' }}
-            />
-            <div className="relative z-10 flex flex-col items-center gap-6">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-100 text-balance">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#FFC72C' }}>
+                Auckland City Infrastructure Services · Ngā Ratonga Hanganga
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-balance">
                 See something that needs fixing?
               </h2>
-              <p className="text-slate-400 max-w-md text-balance">
+              <p className="mt-0.5 text-sm italic" style={{ color: 'rgba(255,199,44,0.6)' }}>
+                He mea kia whakatikaina?
+              </p>
+              <p className="mt-2 text-sm text-white/55 max-w-md text-balance">
                 Your report takes less than 2 minutes and directly helps your local community.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/report" className="btn-primary px-8 py-4 text-base gap-2">
-                  Report Now
-                  <ChevronRight size={18} />
-                </Link>
-                <Link to="/requests" className="btn-secondary px-8 py-4 text-base">
-                  View All Reports
-                </Link>
-              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <Link
+                to="/report"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded font-bold text-sm transition-all duration-150"
+                style={{ background: '#FFC72C', color: '#002040' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#FFD45C'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#FFC72C'}
+              >
+                Report Now · Pūrongo Ināianei <ChevronRight size={15} />
+              </Link>
+              <Link
+                to="/requests"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded font-bold text-sm border border-white/20 text-white hover:border-white/40 hover:bg-white/5 transition-all duration-150"
+              >
+                View All Reports
+              </Link>
             </div>
           </div>
         </div>
