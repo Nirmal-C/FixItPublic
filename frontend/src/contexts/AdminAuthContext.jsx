@@ -12,6 +12,8 @@ export function AdminAuthProvider({ children }) {
     () => sessionStorage.getItem(SESSION_KEY) === 'true'
   )
 
+  // Check the password and persist the session flag so a refresh keeps the admin logged in.
+  // Returns true on success so the login page can decide whether to redirect.
   const login = useCallback((password) => {
     if (password === ADMIN_PASSWORD) {
       sessionStorage.setItem(SESSION_KEY, 'true')
@@ -21,6 +23,8 @@ export function AdminAuthProvider({ children }) {
     return false
   }, [])
 
+  // Clear the session flag and update state — both are needed, otherwise
+  // the UI would still show the authenticated state until the next page load.
   const logout = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY)
     setIsAuthenticated(false)

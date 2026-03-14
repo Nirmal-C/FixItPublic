@@ -29,8 +29,8 @@ export default function LoadingSpinner({ size = 'md', label = 'Loading…', cent
         />
         <defs>
           <linearGradient id="spinner-grad" x1="16" y1="3" x2="29" y2="16" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#667eea" />
-            <stop offset="1" stopColor="#764ba2" />
+            <stop stopColor="#0077C8" />
+            <stop offset="1" stopColor="#004A8F" />
           </linearGradient>
         </defs>
       </svg>

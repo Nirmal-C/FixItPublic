@@ -178,7 +178,7 @@ function AILogEntry({ entry }) {
 
       {/* Footer: model tag + category */}
       <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--divider)' }}>
-        <span className="text-xs text-slate-600 font-mono">claude-opus-4-6</span>
+        <span className="text-xs text-slate-600 font-mono">gpt-4o</span>
         <span
           className="badge border text-xs inline-flex items-center gap-1"
           style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}

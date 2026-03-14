@@ -50,9 +50,9 @@ export default function ReportIssuePage() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  // Generic field setter factory — returns an onChange handler for the given field name.
-  // Also clears the error for that field as soon as the user starts typing,
-  // so the red message disappears immediately rather than waiting for re-submit.
+  // Returns an onChange handler for the named form field so we don't need a
+  // separate handler for every input. Clears that field's validation error on
+  // first keystroke so the red message disappears while the user is fixing it.
   const set = (field) => (e) => {
     const value = e?.target ? e.target.value : e
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -281,7 +281,7 @@ export default function ReportIssuePage() {
                   className="flex-1 h-px"
                   style={{
                     background: step > s.id
-                      ? 'linear-gradient(90deg, #10b981, #667eea)'
+                      ? 'linear-gradient(90deg, #10b981, #0077C8)'
                       : 'rgba(255,255,255,0.08)',
                   }}
                 />
