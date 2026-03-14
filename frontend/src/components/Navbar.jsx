@@ -1,130 +1,125 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { Menu, X, Wrench, AlertCircle, Sun, Moon } from 'lucide-react'
+import { Menu, X, Sun, Moon, Building2, AlertCircle } from 'lucide-react'
 import { NAV_LINKS } from '../utils/constants'
 import { useTheme } from '../contexts/ThemeContext'
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
-
   const isLight = theme === 'light'
 
-  // React Router passes { isActive } into the className function — we use it
-  // to highlight whichever route the user is currently on.
+  // Active link: gold text + gold bottom border; inactive: muted white
   const navLinkClass = ({ isActive }) =>
-    `text-sm font-medium transition-colors duration-150 px-1 py-0.5 rounded
-     ${isActive ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-100'}`
+    `text-sm font-medium transition-all duration-150 px-1 pb-0.5 border-b-2 ${
+      isActive
+        ? 'text-amber-300 border-amber-300'
+        : 'text-white/75 border-transparent hover:text-white hover:border-white/40'
+    }`
 
   return (
     <nav className="navbar">
-      <div className="section-container">
-        <div className="flex items-center justify-between h-16">
+      {/* ── Authority strip ── */}
+      <div style={{ backgroundColor: '#001428', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="section-container">
+          <div className="flex items-center gap-2 py-1">
+            <Building2 size={10} className="text-white/40" />
+            <span className="text-[10px] text-white/40 font-medium tracking-widest uppercase">
+              Tāmaki Makaurau · Auckland City Infrastructure Services — Master of Software Engineering · Yoobee College Auckland
+            </span>
+          </div>
+        </div>
+      </div>
 
-          <Link to="/" className="flex items-center gap-2.5 group">
+      {/* ── Main navigation bar ── */}
+      <div className="section-container">
+        <div className="flex items-center justify-between h-14">
+
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                boxShadow: '0 0 16px rgba(102,126,234,0.4)',
-              }}
+              className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#FFC72C' }}
             >
-              <Wrench size={16} className="text-white" />
+              <Building2 size={16} style={{ color: '#002040' }} />
             </div>
             <div className="leading-none">
-              <span className="text-sm font-bold text-slate-100 group-hover:text-white transition-colors">
-                FixIt
-              </span>
-              <span
-                className="text-sm font-bold"
-                style={{
-                  background: 'linear-gradient(135deg, #818cf8, #67e8f9)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                Public
-              </span>
+              <div>
+                <span className="text-sm font-bold text-white">FixIt</span>
+                <span className="text-sm font-bold" style={{ color: '#FFC72C' }}>Public</span>
+              </div>
+              <div className="text-[9px] text-white/35 font-normal tracking-widest uppercase mt-0.5 hidden sm:block">
+                Pūrongo · Aroturuki · Otinga
+              </div>
             </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map((link) => (
-              <NavLink key={link.path} to={link.path} end={link.path === '/'} className={navLinkClass}>
+              <NavLink
+                key={link.path}
+                to={link.path}
+                end={link.path === '/'}
+                className={navLinkClass}
+              >
                 {link.label}
               </NavLink>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/requests" className="btn-ghost text-xs gap-1.5">
-              <AlertCircle size={14} />
-              View Reports
-            </Link>
-
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
+            {/* Theme toggle — compact icon button */}
             <button
               onClick={toggleTheme}
               aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
-              className="relative w-14 h-7 rounded-full flex items-center px-1 transition-all duration-300 border"
+              className="flex items-center justify-center w-8 h-8 rounded transition-all duration-150"
               style={{
-                background: isLight
-                  ? 'linear-gradient(135deg, #e0e7ff, #c7d2fe)'
-                  : 'linear-gradient(135deg, #1e1b4b, #312e81)',
-                borderColor: isLight ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.4)',
-                boxShadow: isLight
-                  ? '0 0 12px rgba(99,102,241,0.2)'
-                  : '0 0 12px rgba(99,102,241,0.35)',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
               }}
             >
-              <Sun
-                size={11}
-                className="absolute left-1.5 transition-opacity duration-200"
-                style={{ color: '#f59e0b', opacity: isLight ? 1 : 0.3 }}
-              />
-              <Moon
-                size={11}
-                className="absolute right-1.5 transition-opacity duration-200"
-                style={{ color: '#818cf8', opacity: isLight ? 0.3 : 1 }}
-              />
-              {/* Sliding thumb — translateX(27px) moves it to the right end of the 56px track */}
-              <span
-                className="w-5 h-5 rounded-full flex items-center justify-center shadow-md transition-all duration-300 z-10"
-                style={{
-                  transform: isLight ? 'translateX(27px)' : 'translateX(0px)',
-                  background: isLight
-                    ? 'linear-gradient(135deg, #f59e0b, #fbbf24)'
-                    : 'linear-gradient(135deg, #818cf8, #6366f1)',
-                  boxShadow: isLight
-                    ? '0 0 8px rgba(245,158,11,0.6)'
-                    : '0 0 8px rgba(129,140,248,0.6)',
-                }}
-              >
-                {isLight
-                  ? <Sun size={10} className="text-white" />
-                  : <Moon size={10} className="text-white" />
-                }
-              </span>
+              {isLight
+                ? <Sun  size={14} className="text-amber-300" />
+                : <Moon size={14} className="text-white/60" />
+              }
             </button>
 
-            <Link to="/report" className="btn-primary text-xs px-4 py-2">
+            <Link
+              to="/requests"
+              className="text-xs font-medium px-3 py-1.5 rounded transition-all duration-150 flex items-center gap-1.5"
+              style={{ color: 'rgba(255,255,255,0.65)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.background = 'transparent' }}
+            >
+              <AlertCircle size={13} />
+              View Reports
+            </Link>
+
+            {/* Primary CTA — government gold */}
+            <Link
+              to="/report"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold transition-all duration-150"
+              style={{ background: '#FFC72C', color: '#002040' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#FFD45C'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#FFC72C'}
+            >
               + Report Issue
             </Link>
           </div>
 
-          <div className="md:hidden flex items-center gap-2">
+          {/* Mobile controls */}
+          <div className="md:hidden flex items-center gap-1.5">
             <button
               onClick={toggleTheme}
               aria-label="Toggle theme"
-              className="btn-ghost p-2"
+              className="p-2 text-white/60 hover:text-white transition-colors"
             >
-              {isLight
-                ? <Sun size={18} className="text-amber-400" />
-                : <Moon size={18} className="text-indigo-400" />
-              }
+              {isLight ? <Sun size={17} /> : <Moon size={17} />}
             </button>
             <button
-              className="btn-ghost p-2"
+              className="p-2 text-white/70 hover:text-white transition-colors"
               onClick={() => setMobileOpen((v) => !v)}
               aria-label="Toggle navigation"
             >
@@ -134,12 +129,13 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* ── Mobile menu ── */}
       {mobileOpen && (
         <div
-          className="md:hidden border-t border-white/[0.06] animate-slide-down"
-          style={{ background: isLight ? 'rgba(241,245,249,0.97)' : 'rgba(10,15,30,0.97)' }}
+          className="md:hidden animate-slide-down"
+          style={{ backgroundColor: '#001E3C', borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <div className="section-container py-4 flex flex-col gap-1">
+          <div className="section-container py-4 flex flex-col gap-0.5">
             {NAV_LINKS.map((link) => (
               <NavLink
                 key={link.path}
@@ -147,21 +143,22 @@ export default function Navbar() {
                 end={link.path === '/'}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
-                  `block px-4 py-3 rounded-xl text-sm font-medium transition-colors
-                   ${isActive
-                     ? 'text-indigo-400 bg-indigo-400/10'
-                     : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
-                   }`
+                  `block px-4 py-3 rounded text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-amber-300 bg-white/6'
+                      : 'text-white/65 hover:text-white hover:bg-white/5'
+                  }`
                 }
               >
                 {link.label}
               </NavLink>
             ))}
-            <div className="pt-3 border-t border-white/[0.06] mt-2">
+            <div className="pt-3 mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <Link
                 to="/report"
                 onClick={() => setMobileOpen(false)}
-                className="btn-primary w-full justify-center"
+                className="w-full inline-flex items-center justify-center py-2.5 rounded text-sm font-bold"
+                style={{ background: '#FFC72C', color: '#002040' }}
               >
                 + Report Issue
               </Link>
