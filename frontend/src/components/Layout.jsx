@@ -1,16 +1,12 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './Navbar'
-import { Github, Heart } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { Github, Building2, ExternalLink } from 'lucide-react'
 
 export default function Layout() {
   const { pathname } = useLocation()
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
 
-  // Scroll back to top whenever the user navigates to a different route.
-  // Without this, React keeps the scroll position from the previous page.
+  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [pathname])
@@ -22,63 +18,110 @@ export default function Layout() {
     >
       <Navbar />
 
-      {/* Decorative background orbs — fixed so they don't scroll with the page.
-          pointer-events-none and -z-10 make sure they never block clicks. */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute inset-0 bg-grid opacity-50" />
-        <div
-          className="orb-1 absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full"
-          style={{
-            background: isLight
-              ? 'radial-gradient(circle, rgba(102,126,234,0.08) 0%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(102,126,234,0.15) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          className="orb-2 absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full"
-          style={{
-            background: isLight
-              ? 'radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          className="orb-3 absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full"
-          style={{
-            background: isLight
-              ? 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%)',
-          }}
-        />
-      </div>
-
       <main className="flex-1">
         <Outlet />
       </main>
 
-      <footer
-        className="mt-16 transition-colors duration-300"
-        style={{ borderTop: `1px solid var(--divider)` }}
-      >
-        <div className="section-container py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-slate-500">
-              &copy; {new Date().getFullYear()} FixItPublic — MSE800 Group Project
+      {/* ── Government-style footer ── */}
+      <footer style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '3px solid var(--accent)' }}>
+
+        {/* Main footer grid */}
+        <div className="section-container py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+
+            {/* Brand / About */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded flex items-center justify-center"
+                  style={{ backgroundColor: '#FFC72C' }}
+                >
+                  <Building2 size={14} style={{ color: '#002040' }} />
+                </div>
+                <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                  FixItPublic
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                Auckland City Infrastructure Services — a public facility reporting platform
+                connecting residents with local councils.
+              </p>
+              <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                Ngā Ratonga Hanganga o Tāmaki Makaurau
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Master of Software Engineering · Yoobee College Auckland
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
-              <span>Built with</span>
-              <Heart size={13} className="text-rose-500" fill="currentColor" />
-              <span>by Rukshan &amp; Nirmal</span>
+
+            {/* Quick links */}
+            <div className="flex flex-col gap-2">
+              <h4
+                className="text-xs font-bold uppercase tracking-widest mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Quick Links <span className="font-normal opacity-60 normal-case tracking-normal">· Ara Tere</span>
+              </h4>
+              {[
+                { to: '/',         label: 'Home · Kāinga' },
+                { to: '/report',   label: 'Report an Issue · Pūrongo' },
+                { to: '/requests', label: 'View Reports · Tirohia' },
+              ].map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="text-xs transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                >
+                  {label}
+                </Link>
+              ))}
             </div>
-            <a
-              href="https://github.com/Nirmal-C/FixItPublic"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              <Github size={14} />
-              GitHub
-            </a>
+
+            {/* Credits / Contact */}
+            <div className="flex flex-col gap-2">
+              <h4
+                className="text-xs font-bold uppercase tracking-widest mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Project
+              </h4>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Developed by Rukshan &amp; Nirmal
+              </span>
+              <a
+                href="https://github.com/Nirmal-C/FixItPublic"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs inline-flex items-center gap-1.5 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                <Github size={12} />
+                GitHub Repository
+                <ExternalLink size={10} />
+              </a>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Sprint 2 — Public Reporting Platform
+              </span>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div
+            className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6"
+            style={{ borderTop: '1px solid var(--divider)' }}
+          >
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              &copy; {new Date().getFullYear()} FixItPublic. All rights reserved.
+            </p>
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+              For academic purposes only — not an official government service.{' '}
+              <span className="italic">He kaupeka ako noa — ehara i te ratonga kāwanatanga ōkawa.</span>
+            </p>
           </div>
         </div>
       </footer>
