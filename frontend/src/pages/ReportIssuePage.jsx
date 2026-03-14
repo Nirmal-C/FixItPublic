@@ -4,7 +4,7 @@ import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
   Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
-  ChevronRight, Info,
+  ChevronRight, Info, Crosshair, Loader2,
 } from 'lucide-react'
 import { CATEGORIES } from '../utils/constants'
 import { validateReportForm, isFormValid } from '../utils/validation'
@@ -44,13 +44,15 @@ export default function ReportIssuePage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submittedId, setSubmittedId] = useState(null)
+  // GPS auto-fill state — tracks whether we're waiting on the geolocation API
+  const [gpsLoading, setGpsLoading] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const toast = useToast()
 
-  // Generic field setter factory — returns an onChange handler for the given field name.
-  // Also clears the error for that field as soon as the user starts typing,
-  // so the red message disappears immediately rather than waiting for re-submit.
+  // Returns an onChange handler for the named form field so we don't need a
+  // separate handler for every input. Clears that field's validation error on
+  // first keystroke so the red message disappears while the user is fixing it.
   const set = (field) => (e) => {
     const value = e?.target ? e.target.value : e
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -85,6 +87,49 @@ export default function ReportIssuePage() {
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
     if (file) handlePhoto(file)
+  }
+
+  // GPS auto-fill: grabs the device coordinates then calls Nominatim (OpenStreetMap's
+  // free reverse-geocoding API) to convert lat/lng into a human-readable address.
+  // We fill location_description so the admin can still edit it if needed.
+  const handleGpsClick = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.')
+      return
+    }
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          )
+          const data = await res.json()
+          // Nominatim returns a display_name like "42 Queen Street, Auckland CBD, Auckland, 1010, New Zealand"
+          // We trim off the postcode + country to keep it concise for the form.
+          const parts = (data.display_name || '').split(',')
+          const trimmed = parts.slice(0, -2).join(',').trim()
+          setForm((prev) => ({ ...prev, location_description: trimmed || data.display_name }))
+          setErrors((prev) => ({ ...prev, location_description: null }))
+          toast.success('Location filled in automatically!', { title: 'GPS detected' })
+        } catch {
+          // If Nominatim fails, fall back to raw coordinates — still useful for the team
+          setForm((prev) => ({
+            ...prev,
+            location_description: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+          }))
+          toast.warning('Could not reverse-geocode — raw coordinates used instead.')
+        } finally {
+          setGpsLoading(false)
+        }
+      },
+      () => {
+        toast.error('Location access denied. Please type your location manually.')
+        setGpsLoading(false)
+      },
+      { timeout: 10000 }
+    )
   }
 
   // Only validates fields relevant to the current step before letting the user proceed.
@@ -236,7 +281,7 @@ export default function ReportIssuePage() {
                   className="flex-1 h-px"
                   style={{
                     background: step > s.id
-                      ? 'linear-gradient(90deg, #10b981, #667eea)'
+                      ? 'linear-gradient(90deg, #10b981, #0077C8)'
                       : 'rgba(255,255,255,0.08)',
                   }}
                 />
@@ -382,17 +427,34 @@ export default function ReportIssuePage() {
                       Location <span className="text-rose-400">*</span>
                     </span>
                   </label>
-                  <input
-                    type="text"
-                    value={form.location_description}
-                    onChange={set('location_description')}
-                    className={`form-input ${errors.location_description ? 'error' : ''}`}
-                    placeholder="e.g. Corner of Queen St & Victoria St, Auckland CBD"
-                    maxLength={300}
-                  />
+                  {/* GPS button + text input sit side-by-side so the user can auto-fill
+                      or type manually — whichever is faster for them. */}
+                  <div className="flex gap-2 items-start">
+                    <input
+                      type="text"
+                      value={form.location_description}
+                      onChange={set('location_description')}
+                      className={`form-input flex-1 ${errors.location_description ? 'error' : ''}`}
+                      placeholder="e.g. Corner of Queen St & Victoria St, Auckland CBD"
+                      maxLength={300}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGpsClick}
+                      disabled={gpsLoading}
+                      className="btn-secondary px-3 py-2.5 shrink-0 gap-1.5 text-xs whitespace-nowrap"
+                      title="Auto-fill location using GPS"
+                    >
+                      {gpsLoading
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Crosshair size={14} />
+                      }
+                      {gpsLoading ? 'Locating…' : 'Use GPS'}
+                    </button>
+                  </div>
                   {errors.location_description
                     ? <p className="form-error"><AlertCircle size={13} />{errors.location_description}</p>
-                    : <p className="form-hint">Street address, landmark, or description of the location</p>
+                    : <p className="form-hint">Street address, landmark, or tap "Use GPS" to auto-detect your location</p>
                   }
                 </div>
 
