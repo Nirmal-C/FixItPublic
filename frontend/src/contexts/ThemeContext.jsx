@@ -6,7 +6,7 @@ export function ThemeProvider({ children }) {
   // Lazy initialiser so we read localStorage before the very first render —
   // avoids a flash of the wrong theme on page load.
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('fixitpublic-theme') || 'dark'
+    return localStorage.getItem('fixitpublic-theme') || 'light'
   })
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE_MB } from './constants'
 
-// Individual validator functions - each returns an error string or null.
-// They're kept separate so they can be reused across different forms.
+// Small validator functions — each returns an error string on failure, or null if OK.
+// Keeping them separate means we can mix and match across different form fields.
 export const validators = {
   required: (value, fieldName = 'This field') => {
     const v = typeof value === 'string' ? value.trim() : value
@@ -57,12 +57,17 @@ export const validators = {
   },
 }
 
-// Runs all relevant validators against the form values and returns a flat errors object.
-// Each key maps to the first error string found for that field, or the key won't exist at all.
-// Callers can check Object.keys(errors).length === 0 to know if everything passed.
+/**
+ * Validates the entire report submission form.
+ *
+ * Goes through each field, runs the relevant validators, and returns a flat
+ * errors object. Only fields that actually failed will appear as keys.
+ * Callers can do Object.keys(errors).length === 0 to check if everything passed.
+ */
 export function validateReportForm(values) {
   const errors = {}
 
+  // Title — required, 5–200 chars, no script tags
   const titleErr =
     validators.required(values.title, 'Title') ||
     validators.minLength(5)(values.title, 'Title') ||
