@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-// Base URL comes from env var so it can be overridden in production
-// (empty string means all /api/* requests go to the same origin, handled by nginx)
+// Base URL is pulled from the Vite env variable so we can point at different backends
+// without touching the code. Empty string means requests go to the same origin,
+// which nginx then proxies to the Django backend.
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
 const apiClient = axios.create({
@@ -10,8 +11,8 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach JWT token on every request if one exists in localStorage.
-// Sprint 2 will add proper login/logout, for now this is a placeholder.
+// Attach the auth token on every outgoing request if one is stored.
+// This is a placeholder — Sprint 3 will replace this with a proper login flow.
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
@@ -21,8 +22,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Normalise error responses so the UI always gets a readable message.
-// DRF uses 'detail' for most errors, but sometimes it's 'message'.
+// Standardise error responses so components don't have to dig into the axios structure.
+// Django REST Framework uses 'detail' for most errors, but it's not always there.
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -36,12 +37,13 @@ apiClient.interceptors.response.use(
 )
 
 export const requestsApi = {
+  // page_size=999 in the admin fetches everything in one request for now
   list: (params = {}) => apiClient.get('/api/requests/', { params }),
 
   get: (id) => apiClient.get(`/api/requests/${id}/`),
 
-  // If a photo file is attached, we need multipart/form-data instead of JSON.
-  // FormData skips null/undefined/empty values so the backend doesn't get garbage.
+  // Switch to multipart/form-data when a photo is attached, otherwise use JSON.
+  // FormData conveniently skips null/undefined values so Django doesn't see empty fields.
   create: (data) => {
     const hasFile = data.photo instanceof File
     if (hasFile) {
@@ -58,7 +60,7 @@ export const requestsApi = {
     return apiClient.post('/api/requests/', data)
   },
 
-  // Only admins can update status - this will be used in the Sprint 2 dashboard
+  // Partial update — only admins call this through the dashboard
   updateStatus: (id, status) => apiClient.patch(`/api/requests/${id}/`, { status }),
 }
 

@@ -76,6 +76,9 @@ export default function TicketsPage() {
 
   const toast = useToast()
 
+  // Fetch the full ticket list in one go (page_size=999 avoids pagination for now).
+  // DRF can return a plain array or a {results:[]} envelope, so we handle both.
+  // If the API is unreachable we fall back to MOCK_ISSUES and show a banner.
   const fetchTickets = useCallback(async () => {
     setLoading(true)
     try {
@@ -435,7 +438,7 @@ export default function TicketsPage() {
                         {STEPS.map((step, i) => {
                           const done = step.doneIf.includes(selectedTicket.status)
                           const active = step.key === selectedTicket.status || (step.key === 'reported' && selectedTicket.status === 'pending')
-                          const color = done ? '#10b981' : active ? '#667eea' : undefined
+                          const color = done ? '#10b981' : active ? '#0077C8' : undefined
                           return (
                             <div key={step.key} className="flex items-center flex-1 last:flex-none">
                               <div className="flex flex-col items-center gap-1">

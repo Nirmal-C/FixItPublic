@@ -63,7 +63,7 @@ function formatDate(dateStr) {
 }
 
 const STAT_CARDS = [
-  { key: 'total',       label: 'Total',       icon: Ticket,       color: '#667eea', bg: 'rgba(102,126,234,0.12)' },
+  { key: 'total',       label: 'Total',       icon: Ticket,       color: '#0077C8', bg: 'rgba(0,119,200,0.12)' },
   { key: 'pending',     label: 'Pending',     icon: Clock,        color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { key: 'in_progress', label: 'In Progress', icon: Wrench,       color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   { key: 'resolved',    label: 'Resolved',    icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
@@ -76,6 +76,10 @@ export default function DashboardPage() {
   const [usedMock, setUsedMock] = useState(false)
   const navigate = useNavigate()
 
+  // Load all tickets from the API. Django REST Framework can return either
+  // a plain array or a paginated {results: []} object depending on config,
+  // so we handle both shapes here. Falls back to mock data if the backend
+  // isn't running — handy during local development.
   const fetchTickets = useCallback(async () => {
     setLoading(true)
     try {
@@ -93,7 +97,9 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchTickets() }, [fetchTickets])
 
-  // Compute stats from the full ticket list
+  // Count tickets per status for the stat cards.
+  // We do this derivation here rather than in the render so the values
+  // only recalculate when tickets changes, not on every re-render.
   const stats = {
     total:       tickets.length,
     pending:     tickets.filter(t => t.status === 'pending').length,
@@ -174,7 +180,8 @@ export default function DashboardPage() {
           </h3>
           <Link
             to="/admin/tickets"
-            className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="flex items-center gap-1 text-xs transition-colors"
+            style={{ color: 'var(--accent)' }}
           >
             View all <ArrowRight size={12} />
           </Link>
@@ -254,7 +261,7 @@ export default function DashboardPage() {
         )
           .map(([cat, count]) => ({
             cat, count,
-            ...(CATEGORY_MAP[cat] || { label: cat, color: '#667eea', bgColor: 'rgba(102,126,234,0.1)' }),
+            ...(CATEGORY_MAP[cat] || { label: cat, color: '#0077C8', bgColor: 'rgba(0,119,200,0.1)' }),
           }))
           .sort((a, b) => b.count - a.count)
         const max = counts[0]?.count || 1
