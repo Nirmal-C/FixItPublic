@@ -32,7 +32,7 @@ function LocationTooltip({ location, color }) {
             backgroundColor: '#ffffff',
             border: `1px solid ${color}50`,
             boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            color: 'var(--text-primary)',
+            color: '#1e293b',
             whiteSpace: 'normal',
             wordBreak: 'break-word',
             display: 'inline-flex',
