@@ -159,7 +159,7 @@ export default function ReportIssuePage() {
   const nextStep = () => {
     if (validateStep(step)) setStep((s) => Math.min(s + 1, 3))
   }
-  const prevStep = () => setStep((s) => Math.max(s - 1, 1))
+  const prevStep = () => { setErrors({}); setStep((s) => Math.max(s - 1, 1)) }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -259,7 +259,7 @@ export default function ReportIssuePage() {
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex items-center gap-2 flex-1">
               <button
-                onClick={() => step > s.id && setStep(s.id)}
+                onClick={() => { if (step > s.id) { setErrors({}); setStep(s.id) } }}
                 className="flex items-center gap-2 min-w-0"
                 disabled={step <= s.id}
               >

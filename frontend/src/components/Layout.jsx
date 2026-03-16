@@ -27,10 +27,10 @@ export default function Layout() {
 
         {/* Main footer grid */}
         <div className="section-container py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-8 sm:gap-x-0 mb-8">
 
             {/* Brand / About */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:pr-10">
               <div className="flex items-center gap-2">
                 <div
                   className="w-7 h-7 rounded flex items-center justify-center"
@@ -55,9 +55,9 @@ export default function Layout() {
             </div>
 
             {/* Quick links */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 sm:px-10 sm:border-l" style={{ '--tw-border-opacity': 1, borderColor: 'var(--divider)' }}>
               <h4
-                className="text-xs font-bold uppercase tracking-widest mb-1"
+                className="text-xs font-bold uppercase tracking-widest"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Quick Links <span className="font-normal opacity-60 normal-case tracking-normal">· Ara Tere</span>
@@ -81,9 +81,9 @@ export default function Layout() {
             </div>
 
             {/* Credits / Contact */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 sm:pl-10 sm:border-l" style={{ '--tw-border-opacity': 1, borderColor: 'var(--divider)' }}>
               <h4
-                className="text-xs font-bold uppercase tracking-widest mb-1"
+                className="text-xs font-bold uppercase tracking-widest"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Project
