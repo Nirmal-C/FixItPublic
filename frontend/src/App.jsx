@@ -12,6 +12,7 @@ import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
 import TicketsPage from './pages/admin/TicketsPage'
 import AILogPage from './pages/admin/AILogPage'
+import UsersPage from './pages/admin/UsersPage'
 
 // Root component - sets up routing and wraps everything in context providers.
 // ThemeProvider and ToastProvider need to be outside the Router so all pages
@@ -38,6 +39,7 @@ function App() {
 
           {/* Admin protected pages — AdminLayout handles the auth guard */}
           <Route path="/admin" element={<AdminLayout />}>
+            <Route path="users" element={<UsersPage />} />
             <Route index element={<DashboardPage />} />
             <Route path="tickets" element={<TicketsPage />} />
             <Route path="ai-log" element={<AILogPage />} />

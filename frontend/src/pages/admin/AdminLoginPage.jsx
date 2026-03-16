@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, AlertCircle, ArrowLeft, Building2, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, ArrowLeft, Building2, ShieldCheck, User } from 'lucide-react'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { useToast } from '../../components/Toast'
 
 export default function AdminLoginPage() {
+  const [username,     setUsername]     = useState('')
   const [password,     setPassword]     = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error,        setError]        = useState(null)
@@ -20,13 +21,13 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const ok = login(password)
-    if (ok) {
+    try {
+      await login(username, password)
       toast.success('Welcome back, Admin', { title: 'Logged in' })
       navigate('/admin')
-    } else {
-      setError('Incorrect password. Please try again.')
+    } catch (err) {
+      setError(err?.userMessage || err?.message || 'Invalid credentials.')
+    } finally {
       setLoading(false)
     }
   }
@@ -43,7 +44,6 @@ export default function AdminLoginPage() {
           className="rounded-t-lg px-8 py-6 text-center"
           style={{ backgroundColor: '#001E3C', borderBottom: '3px solid #FFC72C' }}
         >
-          {/* Coat-of-arms style icon */}
           <div
             className="w-14 h-14 rounded-lg flex items-center justify-center mx-auto mb-4"
             style={{ backgroundColor: '#FFC72C' }}
@@ -65,15 +65,33 @@ export default function AdminLoginPage() {
             borderTop: 'none',
           }}
         >
-          {/* Service name */}
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              FixItPublic — New Zealand Public Infrastructure Services
+              FixItPublic — Auckland City Infrastructure Services
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+            {/* Username */}
+            <div>
+              <label className="form-label">
+                <span className="flex items-center gap-1.5">
+                  <User size={13} /> Username
+                </span>
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError(null) }}
+                className={`form-input ${error ? 'error' : ''}`}
+                placeholder="Enter your username"
+                autoFocus
+                autoComplete="username"
+              />
+            </div>
+
+            {/* Password */}
             <div>
               <label className="form-label">Password</label>
               <div className="relative">
@@ -82,8 +100,7 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(null) }}
                   className={`form-input pr-10 ${error ? 'error' : ''}`}
-                  placeholder="Enter admin password"
-                  autoFocus
+                  placeholder="Enter your password"
                   autoComplete="current-password"
                 />
                 <button
@@ -92,10 +109,7 @@ export default function AdminLoginPage() {
                   className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword
-                    ? <EyeOff size={15} />
-                    : <Eye    size={15} />
-                  }
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
@@ -117,7 +131,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               className="btn-primary w-full py-2.5 justify-center"
-              disabled={loading || !password}
+              disabled={loading || !username || !password}
             >
               {loading
                 ? 'Signing in…'
@@ -126,7 +140,6 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Back link */}
           <Link
             to="/"
             className="flex items-center justify-center gap-1.5 text-sm transition-colors"
@@ -139,7 +152,6 @@ export default function AdminLoginPage() {
           </Link>
         </div>
 
-        {/* Disclaimer */}
         <p className="text-center text-[10px] mt-4" style={{ color: 'var(--text-muted)' }}>
           Unauthorised access to this system is prohibited. All activity is monitored.
         </p>
