@@ -148,9 +148,9 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main content area — shifts right by the sidebar width to avoid overlap */}
+      {/* Main content area — on desktop shifts right by sidebar width; on mobile sidebar is hidden so no margin */}
       <div
-        className="flex flex-col min-h-screen transition-all duration-300"
+        className="admin-content flex flex-col min-h-screen transition-all duration-300"
         style={{ marginLeft: `${W}px` }}
       >
         {/* Top header bar */}

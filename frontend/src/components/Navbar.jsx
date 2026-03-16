@@ -25,7 +25,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2 py-1">
             <Building2 size={10} className="text-white/40" />
             <span className="text-[10px] text-white/40 font-medium tracking-widest uppercase">
-              Tāmaki Makaurau · Auckland City Infrastructure Services — Master of Software Engineering · Yoobee College Auckland
+              Aotearoa New Zealand · Public Infrastructure Services — Master of Software Engineering · Yoobee College Auckland
             </span>
           </div>
         </div>
