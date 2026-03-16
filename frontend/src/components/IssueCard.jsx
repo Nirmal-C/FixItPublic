@@ -11,6 +11,46 @@ function formatDate(dateStr) {
   }).format(new Date(dateStr))
 }
 
+/* Small popup that appears above truncated location text — like a map popup */
+function LocationTooltip({ location, color }) {
+  if (!location) return null
+  return (
+    <span className="group/loc relative flex items-center gap-1 cursor-default min-w-0">
+      <MapPin size={10} className="shrink-0" />
+      <span className="truncate">{location}</span>
+
+      {/* Popup — only visible on hover of this span */}
+      <span
+        className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none
+                   opacity-0 invisible group-hover/loc:opacity-100 group-hover/loc:visible
+                   transition-all duration-150"
+        style={{ minWidth: '180px', maxWidth: '280px' }}
+      >
+        <span
+          className="flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs shadow-2xl"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: `1px solid ${color}50`,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            color: 'var(--text-primary)',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            display: 'inline-flex',
+          }}
+        >
+          <MapPin size={11} className="shrink-0 mt-0.5" style={{ color }} />
+          {location}
+        </span>
+        {/* Caret */}
+        <span
+          className="block w-2 h-2 rotate-45 ml-3 -mt-1"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: `1px solid ${color}50`, borderTop: 'none', borderLeft: 'none' }}
+        />
+      </span>
+    </span>
+  )
+}
+
 export default function IssueCard({ issue, compact = false }) {
   const cat = CATEGORY_MAP[issue.category] || {
     label: issue.category,
@@ -23,7 +63,7 @@ export default function IssueCard({ issue, compact = false }) {
   /* ── Compact horizontal row (list view) ───────────────────────── */
   if (compact) {
     return (
-      <article className="gov-row group relative flex items-center gap-4 py-3 px-4">
+      <article className="gov-row flex items-center gap-4 py-3 px-4">
 
         {/* Category icon square */}
         <div
@@ -50,14 +90,11 @@ export default function IssueCard({ issue, compact = false }) {
               {cat.label}
             </span>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--text-muted)' }}>
             {issue.location_description && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                <MapPin size={10} className="shrink-0" />
-                <span className="truncate max-w-[200px]">{issue.location_description}</span>
-              </span>
+              <LocationTooltip location={issue.location_description} color={cat.color} />
             )}
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1">
               <User size={10} />
               {issue.reporter_name || 'Anonymous'}
             </span>
@@ -73,59 +110,6 @@ export default function IssueCard({ issue, compact = false }) {
               {formatDate(issue.created_at)}
             </span>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{issue.id}</span>
-          </div>
-        </div>
-
-        {/* Hover detail popup */}
-        <div
-          className="absolute left-0 top-full z-50 mt-2 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200"
-          style={{ width: 'min(360px, calc(100vw - 2rem))' }}
-        >
-          <div
-            className="rounded-xl p-4 flex flex-col gap-3"
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              border: `1px solid ${cat.color}60`,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
-            }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-semibold leading-snug flex-1" style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-                {issue.title}
-              </p>
-              <span
-                className="text-[11px] font-bold px-2 py-0.5 rounded shrink-0"
-                style={{ backgroundColor: cat.bgColor, color: cat.color }}
-              >
-                #{issue.id}
-              </span>
-            </div>
-            {issue.description && (
-              <p className="text-xs leading-relaxed line-clamp-3" style={{ color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
-                {issue.description}
-              </p>
-            )}
-            <div
-              className="grid grid-cols-1 gap-1.5 pt-2.5 text-xs"
-              style={{ borderTop: `1px solid ${cat.color}30`, color: 'var(--text-muted)' }}
-            >
-              {issue.location_description && (
-                <span className="flex items-start gap-2">
-                  <MapPin size={11} className="shrink-0 mt-0.5" />
-                  <span style={{ wordBreak: 'break-word' }}>{issue.location_description}</span>
-                </span>
-              )}
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={11} />
-                  {formatDate(issue.created_at)}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <User size={11} />
-                  {issue.reporter_name || 'Anonymous'}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </article>
@@ -188,61 +172,27 @@ export default function IssueCard({ issue, compact = false }) {
 
         {/* Meta footer */}
         <div
-          className="flex flex-wrap gap-x-4 gap-y-1 mt-auto pt-3"
-          style={{ borderTop: '1px solid var(--divider)' }}
+          className="flex flex-wrap gap-x-4 gap-y-1 mt-auto pt-3 text-xs"
+          style={{ borderTop: '1px solid var(--divider)', color: 'var(--text-muted)' }}
         >
           {issue.location_description && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <MapPin size={11} className="shrink-0" />
-              <span className="truncate max-w-[140px]">{issue.location_description}</span>
-            </span>
+            <LocationTooltip location={issue.location_description} color={cat.color} />
           )}
-          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <span className="flex items-center gap-1">
             <Calendar size={11} />
             {formatDate(issue.created_at)}
           </span>
           {issue.reporter_name ? (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1">
               <User size={11} />
               {issue.reporter_name}
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs italic" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1 italic">
               <User size={11} />
               Anonymous
             </span>
           )}
-        </div>
-      </div>
-
-      {/* Hover detail popup — appears above card to avoid z-index overlap with grid siblings */}
-      <div
-        className="absolute left-0 bottom-full z-50 mb-2 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200"
-        style={{ width: 'min(300px, calc(100vw - 2rem))' }}
-      >
-        <div
-          className="rounded-xl p-3.5 flex flex-col gap-2.5"
-          style={{
-            backgroundColor: 'var(--bg-secondary)',
-            border: `1px solid ${cat.color}60`,
-            boxShadow: '0 -8px 32px rgba(0,0,0,0.3)',
-          }}
-        >
-          {issue.description && (
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
-              {issue.description}
-            </p>
-          )}
-          {issue.location_description && (
-            <span className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <MapPin size={10} className="shrink-0 mt-0.5" />
-              <span style={{ wordBreak: 'break-word' }}>{issue.location_description}</span>
-            </span>
-          )}
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <Calendar size={10} />
-            {formatDate(issue.created_at)}
-          </span>
         </div>
       </div>
     </article>
