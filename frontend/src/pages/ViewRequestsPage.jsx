@@ -366,7 +366,7 @@ export default function ViewRequestsPage() {
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Active:</span>
                 {statusFilter !== 'all' && (
                   <button onClick={() => setStatusFilter('all')} className="filter-pill active text-xs gap-1">
-                    <StatusBadge status={statusFilter} size="sm" /> <X size={10} />
+                    {STATUSES.find(s => s.id === statusFilter)?.label} <X size={10} />
                   </button>
                 )}
                 {catFilter !== 'all' && (

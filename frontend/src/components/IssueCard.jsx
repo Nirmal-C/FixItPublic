@@ -76,38 +76,55 @@ export default function IssueCard({ issue, compact = false }) {
           </div>
         </div>
 
-        {/* Hover detail popup — shows full info without needing to click */}
+        {/* Hover detail popup */}
         <div
-          className="absolute left-0 top-full z-50 mt-1 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
-          style={{ width: 'min(380px, calc(100vw - 2rem))' }}
+          className="absolute left-0 top-full z-50 mt-2 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200"
+          style={{ width: 'min(360px, calc(100vw - 2rem))' }}
         >
-          <div className="glass p-4 shadow-xl flex flex-col gap-2.5" style={{ borderColor: cat.color + '50' }}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+          <div
+            className="rounded-xl p-4 flex flex-col gap-3"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: `1px solid ${cat.color}60`,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-semibold leading-snug flex-1" style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
                 {issue.title}
               </p>
-              <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>#{issue.id}</span>
+              <span
+                className="text-[11px] font-bold px-2 py-0.5 rounded shrink-0"
+                style={{ backgroundColor: cat.bgColor, color: cat.color }}
+              >
+                #{issue.id}
+              </span>
             </div>
             {issue.description && (
-              <p className="text-xs leading-relaxed line-clamp-4" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-xs leading-relaxed line-clamp-3" style={{ color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
                 {issue.description}
               </p>
             )}
-            <div className="flex flex-col gap-1.5 pt-2 text-xs" style={{ borderTop: '1px solid var(--divider)', color: 'var(--text-muted)' }}>
+            <div
+              className="grid grid-cols-1 gap-1.5 pt-2.5 text-xs"
+              style={{ borderTop: `1px solid ${cat.color}30`, color: 'var(--text-muted)' }}
+            >
               {issue.location_description && (
-                <span className="flex items-start gap-1.5">
-                  <MapPin size={10} className="shrink-0 mt-0.5" />
-                  {issue.location_description}
+                <span className="flex items-start gap-2">
+                  <MapPin size={11} className="shrink-0 mt-0.5" />
+                  <span style={{ wordBreak: 'break-word' }}>{issue.location_description}</span>
                 </span>
               )}
-              <span className="flex items-center gap-1.5">
-                <Calendar size={10} />
-                {formatDate(issue.created_at)}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <User size={10} />
-                {issue.reporter_name || 'Anonymous'}
-              </span>
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={11} />
+                  {formatDate(issue.created_at)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <User size={11} />
+                  {issue.reporter_name || 'Anonymous'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -117,7 +134,7 @@ export default function IssueCard({ issue, compact = false }) {
 
   /* ── Standard vertical card (grid / map sidebar view) ─────────── */
   return (
-    <article className="issue-card group relative" style={{ overflow: 'visible' }}>
+    <article className="issue-card group relative hover:z-[60]" style={{ overflow: 'visible' }}>
       {/* Photo / icon thumbnail */}
       <div
         className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
@@ -198,23 +215,34 @@ export default function IssueCard({ issue, compact = false }) {
         </div>
       </div>
 
-      {/* Hover detail popup — shows full description + location without truncation */}
+      {/* Hover detail popup — appears above card to avoid z-index overlap with grid siblings */}
       <div
-        className="absolute left-0 top-full z-50 mt-1 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
-        style={{ width: 'min(380px, calc(100vw - 2rem))' }}
+        className="absolute left-0 bottom-full z-50 mb-2 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200"
+        style={{ width: 'min(300px, calc(100vw - 2rem))' }}
       >
-        <div className="glass p-4 shadow-xl flex flex-col gap-2" style={{ borderColor: cat.color + '50' }}>
+        <div
+          className="rounded-xl p-3.5 flex flex-col gap-2.5"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: `1px solid ${cat.color}60`,
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.3)',
+          }}
+        >
           {issue.description && (
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
               {issue.description}
             </p>
           )}
           {issue.location_description && (
             <span className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
               <MapPin size={10} className="shrink-0 mt-0.5" />
-              {issue.location_description}
+              <span style={{ wordBreak: 'break-word' }}>{issue.location_description}</span>
             </span>
           )}
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <Calendar size={10} />
+            {formatDate(issue.created_at)}
+          </span>
         </div>
       </div>
     </article>
