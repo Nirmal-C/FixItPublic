@@ -167,36 +167,34 @@ export default function IssueCard({ issue, compact = false }) {
 
         {/* Description — hover to see full text if truncated */}
         {issue.description && (
-          <span className="group/desc relative cursor-default">
+          <div className="group/desc relative cursor-default">
             <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               {issue.description}
             </p>
-            <span
+            <div
               className="absolute left-0 top-full mt-2 z-50 pointer-events-none
                          opacity-0 invisible group-hover/desc:opacity-100 group-hover/desc:visible
                          transition-all duration-150"
               style={{ minWidth: '200px', maxWidth: '280px' }}
             >
-              <span
-                className="flex rounded-lg px-3 py-2 text-xs shadow-2xl"
+              <div
+                className="rounded-lg px-3 py-2 text-xs shadow-2xl"
                 style={{
                   backgroundColor: '#ffffff',
                   border: `1px solid ${cat.color}50`,
                   boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
                   color: '#1e293b',
-                  whiteSpace: 'normal',
                   wordBreak: 'break-word',
-                  display: 'inline-flex',
                 }}
               >
                 {issue.description}
-              </span>
+              </div>
               <span
                 className="block w-2 h-2 rotate-45 ml-3 -mt-1"
                 style={{ backgroundColor: '#ffffff', border: `1px solid ${cat.color}50`, borderTop: 'none', borderLeft: 'none' }}
               />
-            </span>
-          </span>
+            </div>
+          </div>
         )}
 
         {/* Meta footer */}
