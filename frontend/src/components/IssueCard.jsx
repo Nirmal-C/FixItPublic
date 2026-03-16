@@ -11,6 +11,46 @@ function formatDate(dateStr) {
   }).format(new Date(dateStr))
 }
 
+/* Small popup that appears above truncated location text — like a map popup */
+function LocationTooltip({ location, color }) {
+  if (!location) return null
+  return (
+    <span className="group/loc relative flex items-center gap-1 cursor-default min-w-0">
+      <MapPin size={10} className="shrink-0" />
+      <span className="truncate">{location}</span>
+
+      {/* Popup — only visible on hover of this span */}
+      <span
+        className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none
+                   opacity-0 invisible group-hover/loc:opacity-100 group-hover/loc:visible
+                   transition-all duration-150"
+        style={{ minWidth: '180px', maxWidth: '280px' }}
+      >
+        <span
+          className="flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs shadow-2xl"
+          style={{
+            backgroundColor: '#ffffff',
+            border: `1px solid ${color}50`,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            color: '#1e293b',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            display: 'inline-flex',
+          }}
+        >
+          <MapPin size={11} className="shrink-0 mt-0.5" style={{ color }} />
+          {location}
+        </span>
+        {/* Caret */}
+        <span
+          className="block w-2 h-2 rotate-45 ml-3 -mt-1"
+          style={{ backgroundColor: '#ffffff', border: `1px solid ${color}50`, borderTop: 'none', borderLeft: 'none' }}
+        />
+      </span>
+    </span>
+  )
+}
+
 export default function IssueCard({ issue, compact = false }) {
   const cat = CATEGORY_MAP[issue.category] || {
     label: issue.category,
@@ -23,7 +63,7 @@ export default function IssueCard({ issue, compact = false }) {
   /* ── Compact horizontal row (list view) ───────────────────────── */
   if (compact) {
     return (
-      <article className="gov-row group flex items-center gap-4 py-3 px-4">
+      <article className="gov-row flex items-center gap-4 py-3 px-4">
 
         {/* Category icon square */}
         <div
@@ -50,14 +90,11 @@ export default function IssueCard({ issue, compact = false }) {
               {cat.label}
             </span>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--text-muted)' }}>
             {issue.location_description && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                <MapPin size={10} className="shrink-0" />
-                <span className="truncate max-w-[200px]">{issue.location_description}</span>
-              </span>
+              <LocationTooltip location={issue.location_description} color={cat.color} />
             )}
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1">
               <User size={10} />
               {issue.reporter_name || 'Anonymous'}
             </span>
@@ -68,7 +105,7 @@ export default function IssueCard({ issue, compact = false }) {
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <StatusBadge status={issue.status || 'pending'} size="sm" />
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
               <Calendar size={10} />
               {formatDate(issue.created_at)}
             </span>
@@ -81,7 +118,7 @@ export default function IssueCard({ issue, compact = false }) {
 
   /* ── Standard vertical card (grid / map sidebar view) ─────────── */
   return (
-    <article className="issue-card group">
+    <article className="issue-card group relative hover:z-[60]" style={{ overflow: 'visible' }}>
       {/* Photo / icon thumbnail */}
       <div
         className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
@@ -128,33 +165,57 @@ export default function IssueCard({ issue, compact = false }) {
           {issue.title}
         </h3>
 
-        {/* Description */}
-        <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          {issue.description}
-        </p>
+        {/* Description — hover to see full text if truncated */}
+        {issue.description && (
+          <div className="group/desc relative cursor-default">
+            <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {issue.description}
+            </p>
+            <div
+              className="absolute left-0 bottom-full mb-2 z-50 pointer-events-none
+                         opacity-0 invisible group-hover/desc:opacity-100 group-hover/desc:visible
+                         transition-all duration-150"
+              style={{ minWidth: '200px', maxWidth: '280px' }}
+            >
+              <div
+                className="rounded-lg px-3 py-2 text-xs shadow-2xl"
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: `1px solid ${cat.color}50`,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                  color: '#1e293b',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {issue.description}
+              </div>
+              <span
+                className="block w-2 h-2 rotate-45 ml-3 -mt-1"
+                style={{ backgroundColor: '#ffffff', border: `1px solid ${cat.color}50`, borderTop: 'none', borderLeft: 'none' }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Meta footer */}
         <div
-          className="flex flex-wrap gap-x-4 gap-y-1 mt-auto pt-3"
-          style={{ borderTop: '1px solid var(--divider)' }}
+          className="flex flex-wrap gap-x-4 gap-y-1 mt-auto pt-3 text-xs"
+          style={{ borderTop: '1px solid var(--divider)', color: 'var(--text-muted)' }}
         >
           {issue.location_description && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <MapPin size={11} className="shrink-0" />
-              <span className="truncate max-w-[140px]">{issue.location_description}</span>
-            </span>
+            <LocationTooltip location={issue.location_description} color={cat.color} />
           )}
-          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <span className="flex items-center gap-1">
             <Calendar size={11} />
             {formatDate(issue.created_at)}
           </span>
           {issue.reporter_name ? (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1">
               <User size={11} />
               {issue.reporter_name}
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs italic" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1 italic">
               <User size={11} />
               Anonymous
             </span>
