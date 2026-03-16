@@ -29,7 +29,7 @@ function LocationTooltip({ location, color }) {
         <span
           className="flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs shadow-2xl"
           style={{
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: '#ffffff',
             border: `1px solid ${color}50`,
             boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
             color: 'var(--text-primary)',
@@ -44,7 +44,7 @@ function LocationTooltip({ location, color }) {
         {/* Caret */}
         <span
           className="block w-2 h-2 rotate-45 ml-3 -mt-1"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: `1px solid ${color}50`, borderTop: 'none', borderLeft: 'none' }}
+          style={{ backgroundColor: '#ffffff', border: `1px solid ${color}50`, borderTop: 'none', borderLeft: 'none' }}
         />
       </span>
     </span>
