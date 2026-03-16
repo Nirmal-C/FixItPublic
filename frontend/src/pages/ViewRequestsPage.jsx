@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Search, SlidersHorizontal, X, RefreshCw,
-  AlertTriangle, MapPin, List, LayoutGrid, Map, ChevronRight,
+  AlertTriangle, MapPin, List, LayoutGrid, Map, ChevronRight, SearchX,
 } from 'lucide-react'
 import { CATEGORIES, STATUSES, PAGE_SIZE, CATEGORY_MAP } from '../utils/constants'
 import { requestsApi } from '../api/client'
@@ -156,7 +156,7 @@ export default function ViewRequestsPage() {
             <div>
               <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Community Reports</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Public facility issues submitted by Auckland residents
+                Public facility issues submitted by residents across New Zealand
                 {usedMock && <span className="ml-2 text-xs font-medium" style={{ color: '#f59e0b' }}>(demo — backend offline)</span>}
               </p>
             </div>
@@ -324,7 +324,7 @@ export default function ViewRequestsPage() {
                       type="search"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search reports…"
+                      placeholder="Title, location…"
                       className="form-input pl-9"
                     />
                   </div>
@@ -366,7 +366,7 @@ export default function ViewRequestsPage() {
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Active:</span>
                 {statusFilter !== 'all' && (
                   <button onClick={() => setStatusFilter('all')} className="filter-pill active text-xs gap-1">
-                    <StatusBadge status={statusFilter} size="sm" /> <X size={10} />
+                    {STATUSES.find(s => s.id === statusFilter)?.label} <X size={10} />
                   </button>
                 )}
                 {catFilter !== 'all' && (
@@ -411,7 +411,7 @@ export default function ViewRequestsPage() {
 
             ) : issues.length === 0 ? (
               <EmptyState
-                icon={MapPin}
+                icon={SearchX}
                 title="No reports found"
                 description={search || activeFilters > 0
                   ? 'Try adjusting your search or clearing filters.'
@@ -421,7 +421,7 @@ export default function ViewRequestsPage() {
 
             ) : (
               <>
-                <div className={`grid gap-3 ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+                <div className={`grid gap-3 overflow-x-clip ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
                   {issues.map((issue) => (
                     <IssueCard key={issue.id} issue={issue} compact={viewMode === 'list'} />
                   ))}

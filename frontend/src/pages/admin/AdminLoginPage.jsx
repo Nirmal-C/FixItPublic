@@ -68,7 +68,7 @@ export default function AdminLoginPage() {
           {/* Service name */}
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              FixItPublic — Auckland City Infrastructure Services
+              FixItPublic — New Zealand Public Infrastructure Services
             </p>
           </div>
 
