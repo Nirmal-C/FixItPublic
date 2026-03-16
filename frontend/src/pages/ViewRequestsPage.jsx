@@ -156,7 +156,7 @@ export default function ViewRequestsPage() {
             <div>
               <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Community Reports</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Public facility issues submitted by Auckland residents
+                Public facility issues submitted by residents across New Zealand
                 {usedMock && <span className="ml-2 text-xs font-medium" style={{ color: '#f59e0b' }}>(demo — backend offline)</span>}
               </p>
             </div>
