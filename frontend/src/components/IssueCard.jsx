@@ -172,7 +172,7 @@ export default function IssueCard({ issue, compact = false }) {
               {issue.description}
             </p>
             <div
-              className="absolute left-0 top-full mt-2 z-50 pointer-events-none
+              className="absolute left-0 bottom-full mb-2 z-50 pointer-events-none
                          opacity-0 invisible group-hover/desc:opacity-100 group-hover/desc:visible
                          transition-all duration-150"
               style={{ minWidth: '200px', maxWidth: '280px' }}
