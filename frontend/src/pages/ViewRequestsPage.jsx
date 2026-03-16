@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Search, SlidersHorizontal, X, RefreshCw,
-  AlertTriangle, MapPin, List, LayoutGrid, Map, ChevronRight,
+  AlertTriangle, MapPin, List, LayoutGrid, Map, ChevronRight, SearchX,
 } from 'lucide-react'
 import { CATEGORIES, STATUSES, PAGE_SIZE, CATEGORY_MAP } from '../utils/constants'
 import { requestsApi } from '../api/client'
@@ -324,7 +324,7 @@ export default function ViewRequestsPage() {
                       type="search"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search reports…"
+                      placeholder="Title, location…"
                       className="form-input pl-9"
                     />
                   </div>
@@ -411,7 +411,7 @@ export default function ViewRequestsPage() {
 
             ) : issues.length === 0 ? (
               <EmptyState
-                icon={MapPin}
+                icon={SearchX}
                 title="No reports found"
                 description={search || activeFilters > 0
                   ? 'Try adjusting your search or clearing filters.'
