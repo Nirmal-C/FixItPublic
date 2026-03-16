@@ -1,37 +1,49 @@
 import { createContext, useContext, useState, useCallback } from 'react'
+import apiClient from '../api/client'
 
-const ADMIN_PASSWORD = 'admin123'
-const SESSION_KEY = 'pfmrs_admin_authed'
+const ACCESS_KEY  = 'pfmrs_access_token'
+const REFRESH_KEY = 'pfmrs_refresh_token'
 
 const AdminAuthContext = createContext(null)
 
-export function AdminAuthProvider({ children }) {
-  // Read sessionStorage on first render so a page refresh doesn't log the admin out.
-  // sessionStorage clears automatically when the browser tab is closed.
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => sessionStorage.getItem(SESSION_KEY) === 'true'
-  )
+function decodePayload(token) {
+  try { return JSON.parse(atob(token.split('.')[1])) }
+  catch { return null }
+}
 
-  // Check the password and persist the session flag so a refresh keeps the admin logged in.
-  // Returns true on success so the login page can decide whether to redirect.
-  const login = useCallback((password) => {
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, 'true')
-      setIsAuthenticated(true)
-      return true
+export function AdminAuthProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!localStorage.getItem(ACCESS_KEY)
+  )
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem(ACCESS_KEY)
+    return token ? decodePayload(token) : null
+  })
+
+  const login = useCallback(async (username, password) => {
+    const res = await apiClient.post('/api/auth/token/', { username, password })
+    const { access, refresh } = res.data
+    const payload = decodePayload(access)
+
+    if (!['admin', 'superuser'].includes(payload?.role)) {
+      throw new Error('You do not have admin access.')
     }
-    return false
+
+    localStorage.setItem(ACCESS_KEY,  access)
+    localStorage.setItem(REFRESH_KEY, refresh)
+    setIsAuthenticated(true)
+    setUser(payload)
   }, [])
 
-  // Clear the session flag and update state — both are needed, otherwise
-  // the UI would still show the authenticated state until the next page load.
   const logout = useCallback(() => {
-    sessionStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(ACCESS_KEY)
+    localStorage.removeItem(REFRESH_KEY)
     setIsAuthenticated(false)
+    setUser(null)
   }, [])
 
   return (
-    <AdminAuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AdminAuthContext.Provider value={{ isAuthenticated, login, logout, user }}>
       {children}
     </AdminAuthContext.Provider>
   )
