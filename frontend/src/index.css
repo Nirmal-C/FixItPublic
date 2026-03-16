@@ -264,7 +264,7 @@ html.light {
 
   /* ── Issue card (vertical, grid view) ── */
   .issue-card {
-    @apply flex flex-col gap-3 p-4 rounded-lg overflow-hidden transition-all duration-200;
+    @apply flex flex-col gap-3 p-4 rounded-lg transition-all duration-200;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-left: 3px solid var(--accent);
@@ -383,3 +383,38 @@ html.light .border-b { border-color: var(--divider) !important; }
 .bg-indigo-400\/10 { background-color: var(--accent-light) !important; }
 .border-indigo-500\/50,
 .border-indigo-400  { border-color: var(--accent) !important; }
+
+/* ─── Dark mode: boost undercontrast Tailwind slate greys ─── */
+/* text-slate-500 (#64748b) and text-slate-600 (#475569) are too dark on deep navy */
+/* Light-mode overrides below have higher specificity and win when html.light is active */
+.text-slate-500 { color: var(--text-muted)     !important; }
+.text-slate-600 { color: var(--text-secondary) !important; }
+
+/* ─── Mobile: prevent iOS Safari from auto-zooming into form inputs ─── */
+/* iOS zooms when input font-size < 16px. Override to 16px on touch screens. */
+@media (max-width: 767px) {
+  .form-input,
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* ─── Mobile: admin content must not be offset by the hidden sidebar ─── */
+/* The sidebar is fixed + translated off-screen on mobile, but marginLeft is still  */
+/* applied inline. This resets it to 0 so content fills the full screen width.      */
+@media (max-width: 767px) {
+  .admin-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* ─── Mobile: prevent compact card metadata from overflowing on narrow screens ─── */
+@media (max-width: 480px) {
+  .gov-row { flex-wrap: wrap; gap: 0.5rem; }
+  .gov-row .flex-col.flex-1 { min-width: 0; }
+}
