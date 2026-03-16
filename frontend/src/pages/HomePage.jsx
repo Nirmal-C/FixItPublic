@@ -135,7 +135,7 @@ const HOW_IT_WORKS = [
     num: '03', icon: CheckCircle2, color: '#f59e0b',
     maori: 'Ka Mahi te Kaunihera',
     title: 'Council Acts',
-    description: 'Auckland Council reviews your report, assigns a maintenance crew, and updates you in real time.',
+    description: 'Your local council reviews your report, assigns a maintenance crew, and updates you in real time.',
   },
 ]
 
@@ -185,8 +185,8 @@ export default function HomePage() {
                 style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent-text)' }}
               >
                 <Building2 size={11} />
-                Auckland City Infrastructure Services
-                <span className="opacity-60 font-normal">· Ngā Ratonga Hanganga o Tāmaki Makaurau</span>
+                New Zealand Public Infrastructure Services
+                <span className="opacity-60 font-normal">· Ngā Ratonga Hanganga o Aotearoa</span>
               </span>
 
               <div>
@@ -199,7 +199,7 @@ export default function HomePage() {
                 </p>
                 <p className="mt-3 text-base leading-relaxed max-w-lg" style={{ color: 'var(--text-secondary)' }}>
                   Report broken streetlights, damaged footpaths, graffiti, and infrastructure issues
-                  directly to Auckland Council maintenance teams.
+                  directly to local council maintenance teams across New Zealand.
                 </p>
               </div>
 
@@ -433,7 +433,7 @@ export default function HomePage() {
           >
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#FFC72C' }}>
-                Auckland City Infrastructure Services · Ngā Ratonga Hanganga
+                New Zealand Public Infrastructure Services · Ngā Ratonga Hanganga
               </p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-balance">
                 See something that needs fixing?
