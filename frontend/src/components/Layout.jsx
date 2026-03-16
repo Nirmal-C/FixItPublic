@@ -43,11 +43,11 @@ export default function Layout() {
                 </span>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Auckland City Infrastructure Services — a public facility reporting platform
+                New Zealand Public Infrastructure Services — a public facility reporting platform
                 connecting residents with local councils.
               </p>
               <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
-                Ngā Ratonga Hanganga o Tāmaki Makaurau
+                Ngā Ratonga Hanganga o Aotearoa
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Master of Software Engineering · Yoobee College Auckland
