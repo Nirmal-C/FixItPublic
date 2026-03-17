@@ -71,6 +71,9 @@ jobs:
       - name: Create or Update K8s Secrets
         run: |
           kubectl create secret generic app-secrets \
+            --from-literal=SUPERUSER_USERNAME='${{ secrets.SUPERUSER_USERNAME }}' \
+            --from-literal=SUPERUSER_EMAIL='${{ secrets.SUPERUSER_EMAIL }}' \
+            --from-literal=SUPERUSER_PASSWORD='${{ secrets.SUPERUSER_PASSWORD }}' \
             --from-literal=DJANGO_SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}' \
             --from-literal=DB_NAME='${{ secrets.DB_NAME }}' \
             --from-literal=DB_USER='${{ secrets.DB_USER }}' \
