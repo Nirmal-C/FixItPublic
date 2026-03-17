@@ -11,11 +11,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: import.meta.env.VITE_API_URL || 'http://backend:8000',
+        target: process.env.VITE_API_URL || 'http://backend:8000',
         changeOrigin: true,
       },
       '/health': {
-        target: import.meta.env.VITE_API_URL || 'http://backend:8000',
+        target: process.env.VITE_API_URL || 'http://backend:8000',
         changeOrigin: true,
       },
     },
