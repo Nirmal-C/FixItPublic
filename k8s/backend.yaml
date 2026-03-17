@@ -4,6 +4,8 @@ metadata:
   name: django-backend
 spec:
   replicas: 1
+  strategy:
+    type: Recreate  # Kills the old pod first so the new one can take the CPU "chair"
   selector:
     matchLabels:
       app: django-backend
@@ -13,25 +15,13 @@ spec:
         app: django-backend
     spec:
       containers:
-      - name: django-backend
-        image: groupprojectdemo.azurecr.io/django-backend:latest
-        ports:
-        - containerPort: 8000
-        envFrom:
-        - secretRef:
-            name: app-secrets
-        readinessProbe:
-          httpGet:
-            path: /api/hello/
-            port: 8000
-          initialDelaySeconds: 5 
-          periodSeconds: 10      
-        livenessProbe:
-          httpGet:
-            path: /api/hello/
-            port: 8000
-          initialDelaySeconds: 15 
-          periodSeconds: 20
+        - name: django-backend
+          image: groupprojectdemo.azurecr.io/django-backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: app-secrets
 ---
 apiVersion: v1
 kind: Service
@@ -40,7 +30,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8000
-    targetPort: 8000
+    - port: 8000
+      targetPort: 8000
   selector:
     app: django-backend

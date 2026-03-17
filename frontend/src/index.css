@@ -1,68 +1,420 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Theme variables ─────────────────────────────────────── */
+
+/* Dark mode (default) — deep government navy */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --bg-primary:    #0C1829;
+  --bg-secondary:  #0E2040;
+  --card-bg:       #122040;
+  --card-border:   rgba(255,255,255,0.11);
+  --input-bg:      #0C1829;
+  --input-border:  rgba(255,255,255,0.16);
+  --text-primary:  #EDF2F7;
+  --text-secondary:#A8C4DA;   /* ↑ was #8BA8C4 — improved contrast */
+  --text-muted:    #7B9EB8;   /* ↑ was #5C7A96 — improved contrast */
+  --navbar-bg:     #002040;
+  --navbar-accent: #FFC72C;
+  --divider:       rgba(255,255,255,0.09);
+  --accent:        #0077C8;
+  --accent-hover:  #005EA3;
+  --accent-light:  rgba(0,119,200,0.13);
+  --accent-text:   #5AB5F0;   /* ↑ was #4DAAEE — improved contrast */
+  --hero-bg:       #0A1628;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Light mode — clean government white / light-grey */
+html.light {
+  --bg-primary:    #EEF2F6;
+  --bg-secondary:  #DDE5EE;
+  --card-bg:       #FFFFFF;
+  --card-border:   #C5D3DF;
+  --input-bg:      #FFFFFF;
+  --input-border:  #9DB8CC;
+  --text-primary:  #0D1C2E;
+  --text-secondary:#3A5E7C;
+  --text-muted:    #6E90A8;
+  --navbar-bg:     #002040;
+  --navbar-accent: #FFC72C;
+  --divider:       #C5D3DF;
+  --accent:        #0066BB;
+  --accent-hover:  #004E8F;
+  --accent-light:  rgba(0,102,187,0.08);
+  --accent-text:   #0066BB;
+  --hero-bg:       #EEF2F6;
 }
 
-body {
-  margin: 0;
+/* ─── Base ───────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    @apply font-sans m-0 min-h-screen overflow-x-hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-400/30 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400/50; }
+
+  ::selection { background: var(--accent); color: #fff; }
+
+  h1, h2, h3, h4, h5, h6 { @apply font-semibold leading-tight; }
+  a { @apply text-inherit no-underline; }
+  img { @apply max-w-full block; }
+  button { font-family: inherit; }
+  input, textarea, select { @apply font-sans; }
+}
+
+/* ─── Components ─────────────────────────────────────────── */
+@layer components {
+
+  /* ── Official government card — solid, no glass blur ── */
+  .glass {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded-lg;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  .glass-sm {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .glass-hover {
+    @apply transition-all duration-200;
+  }
+  .glass-hover:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    transform: translateY(-2px);
+  }
+
+  /* ── Government service tile (homepage service boxes) ── */
+  .service-tile {
+    @apply flex flex-col gap-4 p-6 rounded-lg transition-all duration-200;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-top: 3px solid var(--accent);
+  }
+  .service-tile:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+    transform: translateY(-2px);
+  }
+
+  /* ── Government compact row (horizontal list view) ── */
+  .gov-row {
+    @apply flex items-start gap-4 p-4 rounded-lg transition-all duration-150;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--accent);
+  }
+  .gov-row:hover {
+    border-left-color: var(--accent-hover);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+
+  /* ── Buttons — government official style ── */
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 px-5 py-2.5
+           rounded font-semibold text-sm text-white
+           transition-all duration-150 cursor-pointer select-none border-0;
+    background: var(--accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; transform: none; }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           rounded font-semibold text-sm transition-all duration-150 cursor-pointer;
+    background: transparent;
+    border: 1.5px solid var(--card-border);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2
+           rounded font-medium text-sm bg-transparent
+           transition-all duration-150 cursor-pointer border-0;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  /* ── Form inputs ── */
+  .form-input {
+    @apply w-full px-3.5 py-2.5 rounded text-sm outline-none transition-all duration-150;
+    background: var(--input-bg);
+    border: 1.5px solid var(--input-border);
+    color: var(--text-primary);
+  }
+  .form-input::placeholder { color: var(--text-muted); }
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .form-input.error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.10);
+  }
+  .form-input:disabled { @apply opacity-50 cursor-not-allowed; }
+
+  .form-label  { @apply block text-sm font-semibold mb-1.5; color: var(--text-secondary); }
+  .form-error  { @apply flex items-center gap-1 mt-1.5 text-xs text-red-500; }
+  .form-hint   { @apply mt-1 text-xs; color: var(--text-muted); }
+
+  /* ── Section container ── */
+  .section-container { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+
+  /* ── Skeleton shimmer ── */
+  .skeleton {
+    background: linear-gradient(90deg,
+      var(--card-bg) 25%,
+      var(--bg-secondary) 50%,
+      var(--card-bg) 75%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded;
+  }
+
+  /* ── Filter pill ── */
+  .filter-pill {
+    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-sm font-medium
+           transition-all duration-150 cursor-pointer border whitespace-nowrap;
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-secondary);
+  }
+  .filter-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+  .filter-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ── Category card ── */
+  .category-card {
+    @apply relative flex flex-col items-center gap-3 p-5 rounded-lg border-2 cursor-pointer
+           transition-all duration-200 select-none text-center;
+    background: var(--card-bg);
+    border-color: var(--card-border);
+  }
+  .category-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .category-card.selected {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    @apply relative w-full rounded-lg border-2 border-dashed cursor-pointer
+           transition-all duration-200 overflow-hidden;
+    border-color: var(--input-border);
+    background: var(--input-bg);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* ── Step indicator ── */
+  .step-circle {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+           transition-all duration-300 shrink-0;
+  }
+  .step-circle.done   { @apply bg-emerald-600 text-white; }
+  .step-circle.active { background: var(--accent); @apply text-white; }
+  .step-circle.pending {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    border: 1.5px solid var(--card-border);
+  }
+
+  /* ── Issue card (vertical, grid view) ── */
+  .issue-card {
+    @apply flex flex-col gap-3 p-4 rounded-lg transition-all duration-200;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--accent);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .issue-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    transform: translateY(-1px);
+  }
+
+  /* ── Badge ── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  /* ── Navbar — always government navy ── */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--navbar-bg);
+    border-bottom: 3px solid var(--navbar-accent);
+  }
+}
+
+/* ─── Utilities ─────────────────────────────────────────── */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ─── Toast container ────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+.toast { pointer-events: all; }
+
+/* ─── Light-mode overrides ───────────────────────────────── */
+
+html.light body  { background-color: var(--bg-primary); }
+html.light #root { background-color: var(--bg-primary); }
+
+/* Text: Tailwind slate-* used in legacy components */
+html.light .text-slate-100 { color: var(--text-primary)   !important; }
+html.light .text-slate-200 { color: #1e293b               !important; }
+html.light .text-slate-300 { color: var(--text-secondary) !important; }
+html.light .text-slate-400 { color: var(--text-secondary) !important; }
+html.light .text-slate-500 { color: var(--text-muted)     !important; }
+html.light .text-slate-600 { color: #94a3b8               !important; }
+
+/* Cards */
+html.light .glass    { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .glass-sm { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .glass-hover:hover {
+  background: var(--card-bg)   !important;
+  border-color: var(--accent)  !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+}
+html.light .service-tile { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .gov-row  { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .issue-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; border-left-color: var(--accent) !important; }
+
+/* Buttons */
+html.light .btn-secondary {
+  background: transparent !important;
+  border-color: var(--card-border) !important;
+  color: var(--text-primary) !important;
+}
+html.light .btn-secondary:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+html.light .btn-ghost { color: var(--text-secondary) !important; }
+html.light .btn-ghost:hover { background: var(--accent-light) !important; color: var(--accent) !important; }
+
+/* Forms */
+html.light .form-input { background: var(--input-bg) !important; border-color: var(--input-border) !important; color: var(--text-primary) !important; }
+html.light .form-input::placeholder { color: var(--text-muted) !important; }
+html.light .form-input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-light) !important; }
+
+/* Category cards */
+html.light .category-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+html.light .category-card:hover  { background: var(--accent-light) !important; border-color: var(--accent) !important; }
+html.light .category-card.selected { background: var(--accent-light) !important; border-color: var(--accent) !important; }
+
+/* Upload zone */
+html.light .upload-zone { background: var(--input-bg) !important; border-color: var(--input-border) !important; }
+html.light .upload-zone:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; }
+
+/* Filter pills */
+html.light .filter-pill { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-secondary) !important; }
+html.light .filter-pill:hover { background: var(--accent-light) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+html.light .filter-pill.active { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+
+/* Skeleton */
+html.light .skeleton { background: linear-gradient(90deg, var(--card-bg) 25%, var(--bg-secondary) 50%, var(--card-bg) 75%) !important; }
+
+/* Step circles */
+html.light .step-circle.pending { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-muted) !important; }
+
+/* Dividers */
+html.light .border-white\/\[0\.06\] { border-color: var(--divider) !important; }
+html.light .border-white\/\[0\.05\] { border-color: var(--divider) !important; }
+html.light .border-t { border-color: var(--divider) !important; }
+html.light .border-b { border-color: var(--divider) !important; }
+
+/* ─── Legacy indigo/purple → government blue overrides ─── */
+.text-indigo-400,
+.text-indigo-300,
+.text-indigo-200  { color: var(--accent-text) !important; }
+.bg-indigo-400\/10 { background-color: var(--accent-light) !important; }
+.border-indigo-500\/50,
+.border-indigo-400  { border-color: var(--accent) !important; }
+
+/* ─── Dark mode: boost undercontrast Tailwind slate greys ─── */
+/* text-slate-500 (#64748b) and text-slate-600 (#475569) are too dark on deep navy */
+/* Light-mode overrides below have higher specificity and win when html.light is active */
+.text-slate-500 { color: var(--text-muted)     !important; }
+.text-slate-600 { color: var(--text-secondary) !important; }
+
+/* ─── Mobile: prevent iOS Safari from auto-zooming into form inputs ─── */
+/* iOS zooms when input font-size < 16px. Override to 16px on touch screens. */
+@media (max-width: 767px) {
+  .form-input,
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* ─── Mobile: admin content must not be offset by the hidden sidebar ─── */
+/* The sidebar is fixed + translated off-screen on mobile, but marginLeft is still  */
+/* applied inline. This resets it to 0 so content fills the full screen width.      */
+@media (max-width: 767px) {
+  .admin-content {
+    margin-left: 0 !important;
+  }
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* ─── Mobile: prevent compact card metadata from overflowing on narrow screens ─── */
+@media (max-width: 480px) {
+  .gov-row { flex-wrap: wrap; gap: 0.5rem; }
+  .gov-row .flex-col.flex-1 { min-width: 0; }
 }
