@@ -1,60 +1,54 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import './App.css'
+import { ThemeProvider } from './contexts/ThemeContext'
+import { ToastProvider } from './components/Toast'
+import { AdminAuthProvider } from './contexts/AdminAuthContext'
+import Layout from './components/Layout'
+import HomePage from './pages/HomePage'
+import ReportIssuePage from './pages/ReportIssuePage'
+import ViewRequestsPage from './pages/ViewRequestsPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import DashboardPage from './pages/admin/DashboardPage'
+import TicketsPage from './pages/admin/TicketsPage'
+import AILogPage from './pages/admin/AILogPage'
+import UsersPage from './pages/admin/UsersPage'
 
+// Root component - sets up routing and wraps everything in context providers.
+// ThemeProvider and ToastProvider need to be outside the Router so all pages
+// can access them without prop drilling.
+// AdminAuthProvider sits inside those two (so it can use toast) but outside the Router
+// so both the login page and the protected admin layout share the same auth state.
 function App() {
-  const [message, setMessage] = useState('Connecting to API...')
-  const [dbStatus, setDbStatus] = useState({ loading: true, healthy: false })
-
-  useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    
-    // 1. Check General Backend Greeting
-    fetch(`${apiUrl}/hello/`)
-      .then(res => res.json())
-      .then(data => setMessage(data.message))
-      .catch(() => setMessage('Backend is completely unreachable!'));
-
-    // 2. Check Database Specific Health
-    fetch(`${apiUrl}/health/`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.database === 'connected') {
-          setDbStatus({ loading: false, healthy: true });
-        } else {
-          setDbStatus({ loading: false, healthy: false });
-          setMessage(data.message); 
-        }
-      })
-      .catch(() => {
-        setDbStatus({ loading: false, healthy: false });
-      });
-  }, [])
-
   return (
-    <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>
-      <h1>Group Project Dashboard</h1>
-      
-      <div style={{ marginBottom: '30px', padding: '10px', fontSize: '1.2rem' }}>
-        System Notification: <br/>
-        <strong>{message}</strong>
-      </div>
+    <ThemeProvider>
+    <ToastProvider>
+    <AdminAuthProvider>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="report" element={<ReportIssuePage />} />
+            <Route path="requests" element={<ViewRequestsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
 
-      <div style={{
-        display: 'inline-block',
-        padding: '20px 40px',
-        borderRadius: '12px',
-        backgroundColor: dbStatus.loading ? '#f0f0f0' : (dbStatus.healthy ? '#d4edda' : '#f8d7da'),
-        border: `2px solid ${dbStatus.healthy ? '#c3e6cb' : '#f5c6cb'}`,
-        color: dbStatus.healthy ? '#155724' : '#721c24',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        transition: 'all 0.4s ease'
-      }}>
-        <h2 style={{ margin: 0 }}>
-          Database Status: {dbStatus.loading ? '🔍 Checking...' : (dbStatus.healthy ? 'Connected ✅' : 'Disconnected ❌')}
-        </h2>
-      </div>
-      
-      <p style={{ marginTop: '20px', color: '#666' }}>AKS Cluster Environment</p>
-    </div>
+          {/* Admin login — standalone page, no sidebar */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+
+          {/* Admin protected pages — AdminLayout handles the auth guard */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="users" element={<UsersPage />} />
+            <Route index element={<DashboardPage />} />
+            <Route path="tickets" element={<TicketsPage />} />
+            <Route path="ai-log" element={<AILogPage />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AdminAuthProvider>
+    </ToastProvider>
+    </ThemeProvider>
   )
 }
 

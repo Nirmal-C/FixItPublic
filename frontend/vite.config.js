@@ -4,10 +4,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // This allows the server to be accessible outside the container
+    host: true,
     port: 5173,
     watch: {
-      usePolling: true, // Helps with Hot Module Replacement (HMR) on Windows/Docker
+      usePolling: true,
+    },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://backend:8000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: process.env.VITE_API_URL || 'http://backend:8000',
+        changeOrigin: true,
+      },
     },
   },
 })
