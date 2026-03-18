@@ -4,8 +4,9 @@ import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
   Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
-  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles,
+  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles, Bell,
 } from 'lucide-react'
+import { useNotifications } from '../hooks/useNotifications'
 import { CATEGORIES, CATEGORY_MAP } from '../utils/constants'
 import { validateReportForm, isFormValid } from '../utils/validation'
 import { requestsApi } from '../api/client'
@@ -82,6 +83,33 @@ export default function ReportIssuePage() {
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const toast = useToast()
+  const { permission: notifPermission, request: requestNotif, notify } = useNotifications()
+
+  // Request notification permission then fire two timed notifications:
+  // 1. Immediate — report received confirmation
+  // 2. ~10 s later — simulated crew assignment (Sprint 3 demo; real push comes from backend)
+  const fireSubmissionNotifications = async (ticketId) => {
+    const perm = await requestNotif()
+    if (perm !== 'granted') return
+
+    // Slight delay so the user sees the in-app animation first
+    setTimeout(() => {
+      notify('Report received ✓', {
+        body: `Your report #${ticketId} has been logged and is being triaged by the AI system.`,
+        tag: `receipt-${ticketId}`,
+        data: { url: `/track/${ticketId}` },
+      })
+    }, 2000)
+
+    // Simulated assignment notification — Sprint 3 backend will send real push
+    setTimeout(() => {
+      notify('Crew assigned 🔧', {
+        body: `A maintenance crew has been assigned to your report #${ticketId}. Tap to track.`,
+        tag: `assigned-${ticketId}`,
+        data: { url: `/track/${ticketId}` },
+      })
+    }, 12000)
+  }
 
   // Drive the AI step animation — schedule all step timers upfront when analysing starts.
   useEffect(() => {
@@ -259,13 +287,16 @@ const handleGpsClick = () => {
       setSubmitted(true)
       setAiPhase('analysing')
       toast.success('Report submitted successfully!', { title: 'Thank you!' })
+      fireSubmissionNotifications(res.data?.id)
     } catch {
       // Backend offline — simulate successful submission for demo purposes
       await new Promise((resolve) => setTimeout(resolve, 800))
-      setSubmittedId('DEMO-' + Math.floor(Math.random() * 9000 + 1000))
+      const demoId = 'DEMO-' + Math.floor(Math.random() * 9000 + 1000)
+      setSubmittedId(demoId)
       setSubmitted(true)
       setAiPhase('analysing')
       toast.success('Report submitted! (demo mode — backend offline)', { title: 'Thank you!' })
+      fireSubmissionNotifications(demoId)
     } finally {
       setSubmitting(false)
     }
@@ -397,6 +428,22 @@ const handleGpsClick = () => {
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">{aiResult.reasoning}</p>
             </div>
+          )}
+
+          {/* Notification opt-in — shown only if permission not yet granted */}
+          {notifPermission === 'default' && (
+            <button
+              onClick={requestNotif}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150"
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}
+            >
+              <Bell size={15} className="text-indigo-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-200">Get notified when a crew is assigned</p>
+                <p className="text-xs text-slate-500 truncate">Tap to enable push notifications</p>
+              </div>
+              <span className="text-xs text-indigo-400 shrink-0 font-medium">Enable</span>
+            </button>
           )}
 
           <div className="glass p-5 w-full text-left">
