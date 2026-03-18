@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, X, RefreshCw, MapPin, User, Calendar, Image, Download, AlertTriangle, Maximize2, ChevronLeft, ChevronRight, Mail } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { requestsApi } from '../../api/client'
@@ -108,7 +109,7 @@ function TicketModal({ ticket, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [lightboxIdx, onClose, photos.length])
 
-  return (
+  return createPortal(
     <>
       {/* Modal backdrop */}
       <div
@@ -308,7 +309,8 @@ function TicketModal({ ticket, onClose }) {
           )}
         </div>
       )}
-    </>
+    </>,
+    document.body,
   )
 }
 
