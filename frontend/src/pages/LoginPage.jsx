@@ -87,7 +87,7 @@ export default function LoginPage() {
                 value={form.username}
                 onChange={set('username')}
                 className="form-input"
-                placeholder="your_username"
+                placeholder="Enter your username"
                 autoComplete="username"
                 autoFocus
               />
@@ -106,7 +106,7 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={set('password')}
                   className="form-input pr-10"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   autoComplete="current-password"
                 />
                 <button

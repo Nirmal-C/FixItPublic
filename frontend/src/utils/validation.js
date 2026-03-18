@@ -81,7 +81,7 @@ export function validateReportForm(values) {
   const descErr =
     validators.required(values.description, 'Description') ||
     validators.minLength(20)(values.description, 'Description') ||
-    validators.maxLength(2000)(values.description, 'Description') ||
+    validators.maxLength(500)(values.description, 'Description') ||
     validators.noScript(values.description)
   if (descErr) errors.description = descErr
 
