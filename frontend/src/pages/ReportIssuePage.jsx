@@ -56,6 +56,8 @@ const STEPS = [
   { id: 3, label: 'Your Info' },
 ]
 
+const MAX_PHOTOS = 5
+
 const INITIAL_FORM = {
   title: '',
   category: '',
@@ -63,14 +65,14 @@ const INITIAL_FORM = {
   location_description: '',
   reporter_name: '',
   reporter_email: '',
-  photo: null,
+  photos: [], // array of File objects, up to MAX_PHOTOS
 }
 
 export default function ReportIssuePage() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
-  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoPreviews, setPhotoPreviews] = useState([]) // [{file, preview}]
   const [dragOver, setDragOver] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -141,34 +143,39 @@ export default function ReportIssuePage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }))
   }
 
-  const handlePhoto = useCallback((file) => {
-    if (!file) return
-    // Validate before generating the preview — no point showing a preview
-    // for a file we're going to reject (wrong type, too large, etc.).
-    const photoErr = validateReportForm({ ...form, photo: file }).photo
-    if (photoErr) {
-      setErrors((prev) => ({ ...prev, photo: photoErr }))
-      return
-    }
-    setForm((prev) => ({ ...prev, photo: file }))
-    setErrors((prev) => ({ ...prev, photo: null }))
-    // FileReader converts the local file to a base64 data URL we can put in an img src.
-    const reader = new FileReader()
-    reader.onloadend = () => setPhotoPreview(reader.result)
-    reader.readAsDataURL(file)
+  // Add one or more photos to the list (up to MAX_PHOTOS total).
+  // Each file gets validated and a preview URL generated via FileReader.
+  const addPhotos = useCallback((files) => {
+    const current = form.photos
+    const remaining = MAX_PHOTOS - current.length
+    if (remaining <= 0) return
+    const toAdd = Array.from(files).slice(0, remaining)
+    toAdd.forEach((file) => {
+      const photoErr = validateReportForm({ ...form, photo: file }).photo
+      if (photoErr) {
+        setErrors((prev) => ({ ...prev, photo: photoErr }))
+        return
+      }
+      setErrors((prev) => ({ ...prev, photo: null }))
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreviews((prev) => [...prev, { file, preview: reader.result }])
+        setForm((prev) => ({ ...prev, photos: [...prev.photos, file] }))
+      }
+      reader.readAsDataURL(file)
+    })
   }, [form])
 
-  const removePhoto = () => {
-    setForm((prev) => ({ ...prev, photo: null }))
-    setPhotoPreview(null)
+  const removePhoto = (index) => {
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index))
+    setForm((prev) => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }))
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const onDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) handlePhoto(file)
+    if (e.dataTransfer.files?.length) addPhotos(e.dataTransfer.files)
   }
 
   // GPS auto-fill: grabs the device coordinates then calls Nominatim (OpenStreetMap's
@@ -460,7 +467,7 @@ const handleGpsClick = () => {
               onClick={() => {
                 setForm(INITIAL_FORM)
                 setErrors({})
-                setPhotoPreview(null)
+                setPhotoPreviews([])
                 setStep(1)
                 setSubmitted(false)
                 setAiPhase(null)
@@ -704,34 +711,38 @@ const handleGpsClick = () => {
                   <label className="form-label">
                     <span className="flex items-center gap-1.5">
                       <ImageIcon size={14} className="text-indigo-400" />
-                      Photo <span className="text-slate-500 font-normal">(optional)</span>
+                      Photos <span className="text-slate-500 font-normal">(optional · up to {MAX_PHOTOS})</span>
                     </span>
                   </label>
 
-                  {photoPreview ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-white/10">
-                      <img
-                        src={photoPreview}
-                        alt="Preview"
-                        className="w-full max-h-56 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-white/80">
-                          <CheckCircle2 size={14} className="text-emerald-400" />
-                          {form.photo?.name} ({(form.photo?.size / 1024 / 1024).toFixed(2)} MB)
+                  {/* Thumbnails grid — one card per added photo */}
+                  {photoPreviews.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-3">
+                      {photoPreviews.map((item, idx) => (
+                        <div key={idx} className="relative rounded-lg overflow-hidden border border-white/10 aspect-square">
+                          <img
+                            src={item.preview}
+                            alt={`Photo ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-red-500/90 flex items-center justify-center transition-colors"
+                            aria-label={`Remove photo ${idx + 1}`}
+                          >
+                            <X size={10} className="text-white" />
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-1 py-0.5 text-[9px] text-white/70 truncate">
+                            #{idx + 1}
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={removePhoto}
-                          className="w-7 h-7 rounded-full bg-black/50 hover:bg-red-500/80 flex items-center justify-center transition-colors"
-                          aria-label="Remove photo"
-                        >
-                          <X size={13} className="text-white" />
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ) : (
+                  )}
+
+                  {/* Drop zone — hidden when MAX_PHOTOS reached */}
+                  {photoPreviews.length < MAX_PHOTOS && (
                     <div
                       className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
                       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
@@ -743,25 +754,34 @@ const handleGpsClick = () => {
                         ref={fileInputRef}
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/gif"
+                        multiple
                         className="hidden"
-                        onChange={(e) => handlePhoto(e.target.files?.[0])}
+                        onChange={(e) => { if (e.target.files?.length) addPhotos(e.target.files) }}
                       />
-                      <div className="flex flex-col items-center gap-3 py-10 px-6 text-center">
+                      <div className="flex flex-col items-center gap-3 py-8 px-6 text-center">
                         <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
                           style={{ background: 'rgba(102,126,234,0.1)', border: '1px solid rgba(102,126,234,0.2)' }}
                         >
-                          <Upload size={22} className="text-indigo-400" />
+                          <Upload size={20} className="text-indigo-400" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-300">
-                            Drop a photo here, or{' '}
-                            <span className="text-indigo-400 underline underline-offset-2">browse</span>
+                            {photoPreviews.length === 0
+                              ? <>Drop photos here, or <span className="text-indigo-400 underline underline-offset-2">browse</span></>
+                              : <>Add more photos ({MAX_PHOTOS - photoPreviews.length} remaining)</>
+                            }
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">JPG, PNG, WebP · Max 10 MB</p>
+                          <p className="text-xs text-slate-500 mt-1">JPG, PNG, WebP · Max 10 MB each</p>
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {photoPreviews.length >= MAX_PHOTOS && (
+                    <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Maximum {MAX_PHOTOS} photos added
+                    </p>
                   )}
 
                   {errors.photo && (
@@ -837,7 +857,7 @@ const handleGpsClick = () => {
                     <Row label="Category" value={CATEGORIES.find(c => c.id === form.category)?.label} />
                     <Row label="Title" value={form.title} />
                     <Row label="Location" value={form.location_description} />
-                    <Row label="Photo" value={form.photo ? form.photo.name : 'None'} />
+                    <Row label="Photos" value={form.photos.length > 0 ? `${form.photos.length} photo${form.photos.length > 1 ? 's' : ''}` : 'None'} />
                   </div>
                 </div>
 
@@ -863,12 +883,16 @@ const handleGpsClick = () => {
               </div>
 
               {step < 3 ? (
-                <button type="button" onClick={nextStep} className="btn-primary px-6 py-2.5 text-sm gap-2">
+                // key forces React to unmount this button (not reuse the DOM node)
+                // when step reaches 3, preventing the leftover mouseup from the
+                // Continue click from immediately firing on the Submit button.
+                <button key={`continue-${step}`} type="button" onClick={nextStep} className="btn-primary px-6 py-2.5 text-sm gap-2">
                   Continue
                   <ChevronRight size={16} />
                 </button>
               ) : (
                 <button
+                  key="submit"
                   type="submit"
                   className="btn-primary px-7 py-2.5 text-sm gap-2"
                   disabled={submitting}

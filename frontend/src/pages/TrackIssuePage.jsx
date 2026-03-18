@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle2, Clock, Wrench, Search, MapPin, User,
   BrainCircuit, Sparkles, ArrowLeft, RefreshCw,
-  FileText, LogIn,
+  FileText, LogIn, Image as ImageIcon, X,
 } from 'lucide-react'
 import { CATEGORY_MAP, MOCK_CREWS } from '../utils/constants'
 import { requestsApi } from '../api/client'
@@ -41,9 +41,100 @@ const REASONING_MAP = {
   other:         'General issue logged. Routed to general maintenance team for review.',
 }
 
+// Convert a stored relative path or legacy Azure URL to a backend proxy URL
+function photoUrl(photo) {
+  if (!photo) return null
+  if (photo.startsWith('http')) {
+    const match = photo.match(/maintenance-photos\/(.+?)(\?|$)/)
+    return match ? `/api/photos/${match[1]}/` : null
+  }
+  return `/api/photos/${photo}/`
+}
+
 function formatDate(str) {
   if (!str) return '—'
   return new Intl.DateTimeFormat('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(str))
+}
+
+// ── Photo gallery lightbox component ──────────────────────────────────────
+
+function PhotoGallery({ photos }) {
+  const [lightbox, setLightbox] = useState(null) // index of open photo, or null
+
+  return (
+    <div className="glass p-5 flex flex-col gap-3 animate-slide-up">
+      <div className="flex items-center gap-2">
+        <ImageIcon size={14} className="text-indigo-400" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
+          Photos ({photos.length})
+        </span>
+      </div>
+
+      {/* Thumbnail grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        {photos.map((url, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setLightbox(i)}
+            className="relative rounded-lg overflow-hidden border border-white/10 aspect-square focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:opacity-90 transition-opacity"
+          >
+            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+          </button>
+        ))}
+      </div>
+
+      {/* Lightbox overlay */}
+      {lightbox !== null && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.9)' }}
+          onClick={() => setLightbox(null)}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X size={18} className="text-white" />
+          </button>
+
+          {/* Prev / Next */}
+          {lightbox > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1) }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white text-lg font-bold"
+              aria-label="Previous"
+            >‹</button>
+          )}
+          {lightbox < photos.length - 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox + 1) }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white text-lg font-bold"
+              aria-label="Next"
+            >›</button>
+          )}
+
+          {/* Full image */}
+          <img
+            src={photos[lightbox]}
+            alt={`Photo ${lightbox + 1}`}
+            className="max-w-[90vw] max-h-[85vh] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Counter */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
+            {lightbox + 1} / {photos.length}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── My Tickets list (shown when logged in + no ID in URL) ──────────────────
@@ -339,6 +430,11 @@ function TicketTracker({ id }) {
   const crew = MOCK_CREWS.find((c) => c.id === ticket.assigned_crew)
   const reasoning = REASONING_MAP[ticket.category] || REASONING_MAP.other
 
+  // Collect all non-null photo URLs from the ticket (photo through photo5)
+  const photos = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+    .map((k) => photoUrl(ticket[k]))
+    .filter(Boolean)
+
   return (
     <div className="section-container py-10 animate-fade-in">
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
@@ -484,6 +580,11 @@ function TicketTracker({ id }) {
               )}
             </div>
           </div>
+        )}
+
+        {/* Photo gallery — shown only if ticket has photos */}
+        {photos.length > 0 && (
+          <PhotoGallery photos={photos} />
         )}
 
         {/* AI triage summary */}

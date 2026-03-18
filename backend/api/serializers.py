@@ -98,7 +98,7 @@ class TicketListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'category', 'status',
             'description', 'location_description',
-            'reporter_name', 'photo',
+            'reporter_name', 'photo', 'photo2', 'photo3', 'photo4', 'photo5',
             'lat', 'lng',
             'assigned_crew',
             'escalated', 'escalation_level', 'escalation_note',
@@ -124,7 +124,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         model  = MaintenanceTicket
         fields = (
             'id', 'title', 'description', 'category', 'status',
-            'location_description', 'photo',
+            'location_description', 'photo', 'photo2', 'photo3', 'photo4', 'photo5',
             'lat', 'lng',
             'reporter_name', 'reporter_email', 'reporter_user',
             'reporter_display',
