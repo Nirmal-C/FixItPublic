@@ -289,14 +289,8 @@ const handleGpsClick = () => {
       toast.success('Report submitted successfully!', { title: 'Thank you!' })
       fireSubmissionNotifications(res.data?.id)
     } catch {
-      // Backend offline — simulate successful submission for demo purposes
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      const demoId = 'DEMO-' + Math.floor(Math.random() * 9000 + 1000)
-      setSubmittedId(demoId)
-      setSubmitted(true)
-      setAiPhase('analysing')
-      toast.success('Report submitted! (demo mode — backend offline)', { title: 'Thank you!' })
-      fireSubmissionNotifications(demoId)
+      // Backend offline — show a clear error rather than a fake success
+      toast.error('Could not reach the server. Please check your connection and try again.', { title: 'Submission failed' })
     } finally {
       setSubmitting(false)
     }
@@ -457,10 +451,10 @@ const handleGpsClick = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button
-              onClick={() => submittedId ? navigate(`/track/${submittedId}`) : navigate('/requests')}
+              onClick={() => navigate(`/track/${submittedId}`)}
               className="btn-primary flex-1 py-3"
             >
-              {submittedId ? 'Track My Report' : 'View All Reports'}
+              Track My Report
             </button>
             <button
               onClick={() => {

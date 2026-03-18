@@ -1,4 +1,5 @@
-import { MapPin, Calendar, User } from 'lucide-react'
+import { MapPin, Calendar, User, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import StatusBadge from './StatusBadge'
 import { CATEGORY_MAP } from '../utils/constants'
 import * as LucideIcons from 'lucide-react'
@@ -114,7 +115,7 @@ export default function IssueCard({ issue, compact = false }) {
           </div>
         </div>
 
-        {/* Right: status + date + ID */}
+        {/* Right: status + date + ID + track */}
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <StatusBadge status={issue.status || 'pending'} size="sm" />
           <div className="flex items-center gap-2">
@@ -124,6 +125,16 @@ export default function IssueCard({ issue, compact = false }) {
             </span>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{issue.id}</span>
           </div>
+          <Link
+            to={`/track/${issue.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-xs transition-colors"
+            style={{ color: 'var(--accent)' }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Track <ArrowRight size={10} />
+          </Link>
         </div>
       </article>
     )
@@ -233,6 +244,16 @@ export default function IssueCard({ issue, compact = false }) {
               Anonymous
             </span>
           )}
+          <Link
+            to={`/track/${issue.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 ml-auto font-medium transition-opacity"
+            style={{ color: 'var(--accent)', fontSize: '11px' }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Track <ArrowRight size={10} />
+          </Link>
         </div>
       </div>
     </article>
