@@ -165,7 +165,6 @@ export default function RegisterPage() {
                 className="form-input"
                 placeholder="e.g. Aroha"
                 autoComplete="given-name"
-                autoFocus
               />
             </Field>
 
