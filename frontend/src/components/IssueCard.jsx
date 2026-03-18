@@ -71,6 +71,63 @@ function PhotoSlider({ photos, title }) {
   const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i - 1 + photos.length) % photos.length) }
   const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i + 1) % photos.length) }
 
+  /* ── Compact horizontal row (list view) ───────────────────────── */
+  if (compact) {
+    return (
+      <article className="gov-row flex items-center gap-4 py-3 px-4">
+
+        {/* Category icon square */}
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: cat.bgColor }}
+        >
+          <CatIcon size={16} style={{ color: cat.color }} />
+        </div>
+
+        {/* Middle: title + meta */}
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3
+              className="text-sm font-semibold truncate"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {issue.title}
+            </h3>
+            <span
+              className="badge border text-xs shrink-0"
+              style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+            >
+              <CatIcon size={10} />
+              {cat.label}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--text-muted)' }}>
+            {issue.location_description && (
+              <LocationTooltip location={issue.location_description} color={cat.color} />
+            )}
+            <span className="flex items-center gap-1">
+              <User size={10} />
+              {issue.reporter_name || 'Anonymous'}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: status + date + ID */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <StatusBadge status={issue.status || 'pending'} size="sm" />
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <Calendar size={10} />
+              {formatDate(issue.created_at)}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{issue.id}</span>
+          </div>
+        </div>
+      </article>
+    )
+  }
+
+  /* ── Standard vertical card (grid / map sidebar view) ─────────── */
   return (
     <div className="relative w-full h-36 rounded overflow-hidden shrink-0">
       <img
