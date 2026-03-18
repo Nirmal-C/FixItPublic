@@ -125,19 +125,6 @@ export default function RegisterPage() {
     }
   }
 
-  const Field = ({ id, label, icon: Icon, error, children }) => (
-    <div>
-      <label htmlFor={id} className="form-label">
-        <Icon size={13} className="inline mr-1.5 text-indigo-400" />
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="form-error mt-1"><AlertCircle size={12} /> {error}</p>
-      )}
-    </div>
-  )
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ background: 'var(--bg-primary)' }}>
       <div className="w-full max-w-md animate-slide-up">
