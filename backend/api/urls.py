@@ -12,10 +12,25 @@ from .views import (
     TicketListCreateView, TicketDetailView,
     TicketStatusUpdateView, TicketAssignView, MyTicketsView,
 )
+from .emails import send_signin_notification
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        # Fire sign-in notification only on a successful login (2xx response)
+        if response.status_code < 300:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            username = request.data.get('username', '')
+            try:
+                user = User.objects.get(username=username)
+                send_signin_notification(user)
+            except User.DoesNotExist:
+                pass
+        return response
 
 
 urlpatterns = [

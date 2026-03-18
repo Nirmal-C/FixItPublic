@@ -120,5 +120,22 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'api.token_serializer.CustomTokenObtainPairSerializer',
 }
 
-# ── 8. Misc ────────────────────────────────────────────────────────────────────
+# -- 8. Email (SMTP - Namecheap Private Email) --------------------------------
+EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST          = 'mail.privateemail.com'
+EMAIL_PORT          = 587
+EMAIL_USE_TLS       = True
+EMAIL_USE_SSL       = False
+EMAIL_HOST_USER     = 'info@fixitpublic.com'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL  = 'FixItPublic <info@fixitpublic.com>'
+SERVER_EMAIL        = DEFAULT_FROM_EMAIL
+
+# Public-facing site URL -- used to build tracking links in emails
+SITE_URL = 'https://fixitpublic.com'
+
+# Public-facing site URL — used to build tracking links in emails
+SITE_URL = os.environ.get('SITE_URL', 'https://fixitpublic.com')
+
+# ── 9. Misc ────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

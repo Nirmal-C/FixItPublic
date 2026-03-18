@@ -11,13 +11,29 @@ function decodePayload(token) {
   catch { return null }
 }
 
+function isTokenExpired(payload) {
+  if (!payload?.exp) return true
+  return Date.now() / 1000 > payload.exp - 30
+}
+
 export function AdminAuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => !!localStorage.getItem(ACCESS_KEY)
-  )
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const token = localStorage.getItem(ACCESS_KEY)
+    if (!token) return false
+    const payload = decodePayload(token)
+    if (!payload || isTokenExpired(payload)) {
+      localStorage.removeItem(ACCESS_KEY)
+      localStorage.removeItem(REFRESH_KEY)
+      return false
+    }
+    return true
+  })
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem(ACCESS_KEY)
-    return token ? decodePayload(token) : null
+    if (!token) return null
+    const payload = decodePayload(token)
+    if (!payload || isTokenExpired(payload)) return null
+    return payload
   })
 
   const login = useCallback(async (username, password) => {

@@ -43,6 +43,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirm: '',
+    email_notifications: false,
   })
   const [showPass, setShowPass]       = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -82,11 +83,12 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register({
-        username:   form.username.trim(),
-        email:      form.email.trim(),
-        password:   form.password,
-        password2:  form.confirm,
-        first_name: form.first_name.trim(),
+        username:            form.username.trim(),
+        email:               form.email.trim(),
+        password:            form.password,
+        password2:           form.confirm,
+        first_name:          form.first_name.trim(),
+        email_notifications: form.email_notifications,
       })
       toast.success('Account created successfully!', { title: 'Welcome!' })
       navigate('/', { replace: true })
@@ -251,6 +253,32 @@ export default function RegisterPage() {
               </div>
               {errors.confirm && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.confirm}</p>}
             </div>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <div className="relative mt-0.5 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={form.email_notifications}
+                  onChange={(e) => setForm((p) => ({ ...p, email_notifications: e.target.checked }))}
+                  className="sr-only"
+                  id="email_notifications"
+                />
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center transition-all duration-150"
+                  style={{
+                    background: form.email_notifications ? '#6366f1' : 'transparent',
+                    border: `2px solid ${form.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.15)'}`,
+                  }}
+                >
+                  {form.email_notifications && (
+                    <CheckCircle2 size={12} className="text-white" />
+                  )}
+                </div>
+              </div>
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Notify me by email about my tickets and account activity
+              </span>
+            </label>
 
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               By creating an account, you agree to our terms and the New Zealand Privacy Act 2020. Your data is used solely to manage and track maintenance reports.

@@ -7,8 +7,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['username'] = user.username
-        token['role']     = user.role
+        token['username']            = user.username
+        token['role']                = user.role
+        token['email']               = user.email
+        token['email_notifications'] = user.email_notifications
         return token
 
     def validate(self, attrs):
