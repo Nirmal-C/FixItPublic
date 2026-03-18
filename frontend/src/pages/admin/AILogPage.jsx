@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
-import { CATEGORY_MAP, MOCK_CREWS } from '../../utils/constants'
+import { CATEGORY_MAP, CREWS, CREW_MAP } from '../../utils/constants'
 import { requestsApi } from '../../api/client'
 
 // Maps assigned_crew id → human-readable team name
 const crewLabel = (crewId) =>
-  MOCK_CREWS.find((c) => c.id === crewId)?.label || crewId || 'Unknown Crew'
+  CREW_MAP[crewId]?.label || crewId || 'Unknown Crew'
 
 // Category-specific reasoning templates used to generate realistic mock AI entries.
 // The crew and ticket info are injected dynamically from real ticket data.
@@ -226,31 +226,22 @@ function AILogEntry({ entry }) {
 export default function AILogPage() {
   const [aiLog, setAiLog] = useState([])
   const [loading, setLoading] = useState(true)
-  const [usedMock, setUsedMock] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Fetch real tickets, take the most-recent 8, and generate AI entries from them.
-  // If the API is unreachable, fall back to the 5 hardcoded mock entries.
+  // Fetch real tickets and generate AI entries from them.
   const loadLog = useCallback(async () => {
     setLoading(true)
+    setFetchError(false)
     try {
       const res = await requestsApi.list({ page_size: 999 })
       const tickets = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setAiLog(tickets.map((t, i) => generateAIEntry(t, i)))
-      setUsedMock(false)
-    } catch {
-      // Fallback: generate from category-representative mock tickets
-      const MOCK_FALLBACK = [
-        { id: 6, category: 'bus_stop',   assigned_crew: 'crew-echo',    description: 'Roof collapsed', created_at: '2025-03-06T07:30:00Z', escalated: false },
-        { id: 2, category: 'road',       assigned_crew: 'crew-alpha',   description: 'Deep pothole causing tyre damage', created_at: '2025-03-03T14:30:00Z', escalated: false },
-        { id: 4, category: 'footpath',   assigned_crew: 'crew-alpha',   description: 'Cracked footpath with wheelchair mention', created_at: '2025-03-05T11:45:00Z', escalated: false },
-        { id: 5, category: 'graffiti',   assigned_crew: 'crew-delta',   description: 'Offensive graffiti on toilet block', created_at: '2025-02-25T16:20:00Z', escalated: false },
-        { id: 1, category: 'streetlight', assigned_crew: 'crew-bravo',  description: 'Streetlight out for two weeks', created_at: '2025-03-01T09:12:00Z', escalated: false },
-      ]
-      setAiLog(MOCK_FALLBACK.map((t, i) => generateAIEntry(t, i)))
-      setUsedMock(true)
+    } catch (err) {
+      setAiLog([])
+      setFetchError(true)
     } finally {
       setLoading(false)
     }
@@ -381,13 +372,13 @@ export default function AILogPage() {
         )}
       </div>
 
-      {usedMock && (
+      {fetchError && (
         <div
           className="flex items-start gap-3 p-4 rounded-xl text-sm"
-          style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
         >
-          <Info size={16} className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-slate-300">Backend offline — showing representative demo data.</p>
+          <Info size={16} className="text-rose-400 shrink-0 mt-0.5" />
+          <p className="text-slate-300">Could not reach the backend — no AI log entries available.</p>
         </div>
       )}
 
