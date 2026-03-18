@@ -15,10 +15,15 @@ const A_ACCESS  = 'pfmrs_access_token'
 const A_REFRESH = 'pfmrs_refresh_token'
 
 // Attach access token on every request.
-// Citizen token takes priority; falls back to admin token.
+// Admin/superuser endpoints use the admin token; everything else uses the citizen token.
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(C_ACCESS) || localStorage.getItem(A_ACCESS)
+    const isAdminEndpoint = config.url?.includes('/api/superuser/') ||
+                            config.url?.includes('/api/admin/') ||
+                            config.url?.includes('/api/auth/admin')
+    const token = isAdminEndpoint
+      ? (localStorage.getItem(A_ACCESS) || localStorage.getItem(C_ACCESS))
+      : (localStorage.getItem(C_ACCESS) || localStorage.getItem(A_ACCESS))
     if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   },
