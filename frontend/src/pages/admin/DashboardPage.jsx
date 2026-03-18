@@ -9,52 +9,6 @@ import { requestsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
 import { CATEGORY_MAP } from '../../utils/constants'
 
-// Shared mock data — same records used in ViewRequestsPage
-const MOCK_ISSUES = [
-  {
-    id: 1, title: 'Broken streetlight on Queen St near No. 42',
-    category: 'streetlight', status: 'in_progress',
-    description: 'The streetlight has been out for over two weeks.',
-    location_description: 'Queen St, Auckland CBD, near intersection with Wellesley St',
-    reporter_name: 'Sarah K.', created_at: '2025-03-01T09:12:00Z', photo: null,
-  },
-  {
-    id: 2, title: 'Deep pothole on Ponsonby Rd causing tyre damage',
-    category: 'road', status: 'pending',
-    description: 'There is a large pothole approximately 30cm wide and 10cm deep.',
-    location_description: 'Ponsonby Rd, between Franklin Rd and Mackelvie St',
-    reporter_name: null, created_at: '2025-03-03T14:30:00Z', photo: null,
-  },
-  {
-    id: 3, title: 'Playground slide damaged at Victoria Park',
-    category: 'park', status: 'resolved',
-    description: "The main slide at the children's playground has a crack.",
-    location_description: 'Victoria Park, Victoria St West, Auckland',
-    reporter_name: 'James T.', created_at: '2025-02-20T08:00:00Z', photo: null,
-  },
-  {
-    id: 4, title: 'Footpath cracked and uneven near bus stop',
-    category: 'footpath', status: 'pending',
-    description: 'Section of footpath has lifted due to tree roots.',
-    location_description: 'Dominion Rd near Valley Rd bus stop, Mount Eden',
-    reporter_name: 'Aroha W.', created_at: '2025-03-05T11:45:00Z', photo: null,
-  },
-  {
-    id: 5, title: 'Graffiti on public toilet block',
-    category: 'graffiti', status: 'resolved',
-    description: 'Extensive graffiti covering the north and east walls.',
-    location_description: 'Myers Park public toilets, Mayoral Dr, Auckland',
-    reporter_name: null, created_at: '2025-02-25T16:20:00Z', photo: null,
-  },
-  {
-    id: 6, title: 'Bus shelter roof collapsed — safety hazard',
-    category: 'bus_stop', status: 'in_progress',
-    description: "The roof of the bus shelter has partially collapsed after last week's storm.",
-    location_description: 'Great North Rd stop, Grey Lynn, outside No. 165',
-    reporter_name: 'Mohammed A.', created_at: '2025-03-06T07:30:00Z', photo: null,
-  },
-]
-
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   return new Intl.DateTimeFormat('en-NZ', {
@@ -73,23 +27,21 @@ const STAT_CARDS = [
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
-  const [usedMock, setUsedMock] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
   const navigate = useNavigate()
 
-  // Load all tickets from the API. Django REST Framework can return either
-  // a plain array or a paginated {results: []} object depending on config,
-  // so we handle both shapes here. Falls back to mock data if the backend
-  // isn't running — handy during local development.
+  // Load all tickets from the API. DRF can return either a plain array or a
+  // paginated {results:[]} object, so we handle both shapes.
   const fetchTickets = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const res = await requestsApi.list({ page_size: 999 })
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setTickets(data)
-      setUsedMock(false)
-    } catch {
-      setUsedMock(true)
-      setTickets(MOCK_ISSUES)
+    } catch (err) {
+      setFetchError(err?.userMessage || 'Could not reach the backend. Check your connection.')
+      setTickets([])
     } finally {
       setLoading(false)
     }
@@ -123,7 +75,7 @@ export default function DashboardPage() {
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">
             All community reports at a glance
-            {usedMock && <span className="text-amber-400 ml-2">(demo data — backend offline)</span>}
+            {fetchError && <span className="text-rose-400 ml-2">⚠ {fetchError}</span>}
           </p>
         </div>
         <button

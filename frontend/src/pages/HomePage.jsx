@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Construction, ArrowRight, Building2,
@@ -6,19 +6,9 @@ import {
   CheckCircle2, Search, AlertCircle, Loader2,
   ChevronRight, FileText, Phone, Zap, LogIn,
 } from 'lucide-react'
-import { requestsApi } from '../api/client'
+import { requestsApi, statsApi } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
-
-// Mock data for ticket lookup when the backend isn't available
-const MOCK_LOOKUP = {
-  1: { title: 'Broken streetlight on Queen St near No. 42', status: 'in_progress', category: 'Streetlight', location: 'Queen St, Auckland CBD' },
-  2: { title: 'Deep pothole on Ponsonby Rd causing tyre damage', status: 'pending', category: 'Road', location: 'Ponsonby Rd' },
-  3: { title: 'Playground slide damaged at Victoria Park', status: 'resolved', category: 'Park', location: 'Victoria Park' },
-  4: { title: 'Footpath cracked and uneven near bus stop', status: 'pending', category: 'Footpath', location: 'Dominion Rd, Mount Eden' },
-  5: { title: 'Graffiti on public toilet block', status: 'resolved', category: 'Graffiti', location: 'Myers Park, Auckland' },
-  6: { title: 'Bus shelter roof collapsed — safety hazard', status: 'in_progress', category: 'Bus Stop', location: 'Great North Rd, Grey Lynn' },
-}
 
 // Inline ticket tracker widget used in both the hero panel and the services section
 function IssueTracker() {
@@ -27,7 +17,6 @@ function IssueTracker() {
   const [notFound, setNotFound] = useState(false)
   const [loading,  setLoading]  = useState(false)
 
-  // Try the real API first, fall back to mock data if backend is offline
   const handleSearch = async (e) => {
     e.preventDefault()
     const id = ticketId.trim()
@@ -39,9 +28,7 @@ function IssueTracker() {
       if (t?.id) setResult({ title: t.title, status: t.status, category: t.category, location: t.location_description })
       else setNotFound(true)
     } catch {
-      const num = parseInt(id, 10)
-      if (MOCK_LOOKUP[num]) setResult(MOCK_LOOKUP[num])
-      else setNotFound(true)
+      setNotFound(true)
     } finally { setLoading(false) }
   }
 
@@ -140,12 +127,17 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const STATS = [
-  { label: 'Issues Reported',    value: '1,240+', icon: MapPin,       color: '#0077C8', bg: 'rgba(0,119,200,0.10)' },
-  { label: 'Issues Resolved',    value: '980+',   icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.10)' },
-  { label: 'Avg. Response Time', value: '3 days', icon: Clock,        color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  { label: 'Community Members',  value: '5,000+', icon: Users,        color: '#0066BB', bg: 'rgba(0,102,187,0.10)' },
-]
+// Builds the 4 stat cards from live API data (or falls back to placeholder dashes while loading)
+function buildStats(data) {
+  const fmtDays = (d) => d === null || d === undefined ? '—' : `${d} day${d === 1 ? '' : 's'}`
+  const fmtNum  = (n) => n === null || n === undefined ? '—' : n.toLocaleString()
+  return [
+    { label: 'Issues Reported',    value: fmtNum(data?.total_reports),     icon: MapPin,       color: '#0077C8', bg: 'rgba(0,119,200,0.10)' },
+    { label: 'Issues Resolved',    value: fmtNum(data?.resolved_count),    icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.10)' },
+    { label: 'Avg. Response Time', value: fmtDays(data?.avg_response_days),icon: Clock,        color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
+    { label: 'Community Members',  value: fmtNum(data?.community_members), icon: Users,        color: '#0066BB', bg: 'rgba(0,102,187,0.10)' },
+  ]
+}
 
 const FEATURES = [
   { icon: MapPin,      maori: 'Māramatanga Wāhi',   title: 'Location-Aware',   description: 'Pinpoint the exact location on a map so maintenance crews find the issue instantly.',             color: '#0077C8', bg: 'rgba(0,119,200,0.10)' },
@@ -172,6 +164,17 @@ function SectionLabel({ en, mi, heading }) {
 
 export default function HomePage() {
   const { user } = useCitizenAuth()
+  const [statsData, setStatsData]   = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  useEffect(() => {
+    statsApi.public()
+      .then((res) => setStatsData(res.data))
+      .catch(() => setStatsData(null))   // silently fall back — UI shows '—'
+      .finally(() => setStatsLoading(false))
+  }, [])
+
+  const STATS = buildStats(statsData)
 
   return (
     <div>
@@ -238,9 +241,9 @@ export default function HomePage() {
               {/* Quick stats strip at the bottom of the hero */}
               <div className="grid grid-cols-3 gap-5 pt-5 mt-1" style={{ borderTop: '1px solid var(--divider)' }}>
                 {[
-                  { label: 'Reports Filed', value: '1,240+' },
-                  { label: 'Resolved',      value: '980+' },
-                  { label: 'Avg. Response', value: '3 days' },
+                  { label: 'Reports Filed', value: statsLoading ? '…' : (statsData?.total_reports?.toLocaleString() ?? '—') },
+                  { label: 'Resolved',      value: statsLoading ? '…' : (statsData?.resolved_count?.toLocaleString() ?? '—') },
+                  { label: 'Avg. Response', value: statsLoading ? '…' : (statsData?.avg_response_days != null ? `${statsData.avg_response_days} days` : '—') },
                 ].map((s) => (
                   <div key={s.label}>
                     <p className="text-xl sm:text-2xl font-extrabold leading-none" style={{ color: 'var(--accent)' }}>{s.value}</p>

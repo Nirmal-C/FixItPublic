@@ -11,16 +11,6 @@ import SkeletonCard from '../components/SkeletonCard'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 
-/* ─── Mock data (fallback when backend offline) ─── */
-const MOCK_ISSUES = [
-  { id: 1, title: 'Broken streetlight on Queen St near No. 42', category: 'streetlight', status: 'in_progress', description: 'The streetlight has been out for over two weeks. It creates a dangerous dark spot at night.', location_description: 'Queen St, Auckland CBD, near intersection with Wellesley St', reporter_name: 'Sarah K.', created_at: '2025-03-01T09:12:00Z', photo: null, lat: -36.8493, lng: 174.7627 },
-  { id: 2, title: 'Deep pothole on Ponsonby Rd causing tyre damage', category: 'road', status: 'pending', description: 'Large pothole approximately 30cm wide and 10cm deep. Multiple vehicles have been damaged.', location_description: 'Ponsonby Rd, between Franklin Rd and Mackelvie St', reporter_name: null, created_at: '2025-03-03T14:30:00Z', photo: null, lat: -36.8554, lng: 174.7473 },
-  { id: 3, title: 'Playground slide damaged at Victoria Park', category: 'park', status: 'resolved', description: "The main slide at the children's playground has a crack near the top.", location_description: 'Victoria Park, Victoria St West, Auckland', reporter_name: 'James T.', created_at: '2025-02-20T08:00:00Z', photo: null, lat: -36.8533, lng: 174.7465 },
-  { id: 4, title: 'Footpath cracked and uneven near bus stop', category: 'footpath', status: 'pending', description: 'Section of footpath has lifted significantly due to tree roots. Accessibility is compromised.', location_description: 'Dominion Rd near Valley Rd bus stop, Mount Eden', reporter_name: 'Aroha W.', created_at: '2025-03-05T11:45:00Z', photo: null, lat: -36.8762, lng: 174.7491 },
-  { id: 5, title: 'Graffiti on public toilet block', category: 'graffiti', status: 'resolved', description: 'Extensive graffiti covering the north and east walls of the toilet block.', location_description: 'Myers Park public toilets, Mayoral Dr, Auckland', reporter_name: null, created_at: '2025-02-25T16:20:00Z', photo: null, lat: -36.8538, lng: 174.7620 },
-  { id: 6, title: 'Bus shelter roof collapsed — safety hazard', category: 'bus_stop', status: 'in_progress', description: "The roof of the bus shelter has partially collapsed after last week's storm.", location_description: 'Great North Rd stop, Grey Lynn, outside No. 165', reporter_name: 'Mohammed A.', created_at: '2025-03-06T07:30:00Z', photo: null, lat: -36.8601, lng: 174.7379 },
-]
-
 const STATUS_COLORS = { pending: '#f59e0b', in_progress: '#3b82f6', resolved: '#10b981', closed: '#64748b' }
 
 /* ─── Leaflet map component ─── */
@@ -74,12 +64,11 @@ export default function ViewRequestsPage() {
   const [issues,       setIssues]       = useState([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState(null)
-  const [usedMock,     setUsedMock]     = useState(false)
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [catFilter,    setCatFilter]    = useState('all')
-  const [showFilters,  setShowFilters]  = useState(false)   // mobile only
-  const [viewMode,     setViewMode]     = useState('list')  // default: list view
+  const [showFilters,  setShowFilters]  = useState(false)
+  const [viewMode,     setViewMode]     = useState('list')
   const [page,         setPage]         = useState(1)
   const [totalCount,   setTotalCount]   = useState(0)
 
@@ -94,26 +83,13 @@ export default function ViewRequestsPage() {
       const data = res.data
       const isArr  = Array.isArray(data)
       const isPag  = data && typeof data === 'object' && Array.isArray(data.results)
-      if (!isArr && !isPag) throw new Error('Unexpected response')
+      if (!isArr && !isPag) throw new Error('Unexpected response shape from API')
       if (isArr)  { setIssues(data);         setTotalCount(data.length) }
       else        { setIssues(data.results); setTotalCount(data.count || data.results.length) }
-      setUsedMock(false)
-    } catch {
-      setUsedMock(true)
-      let filtered = [...MOCK_ISSUES]
-      if (statusFilter !== 'all') filtered = filtered.filter(i => i.status === statusFilter)
-      if (catFilter    !== 'all') filtered = filtered.filter(i => i.category === catFilter)
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        filtered = filtered.filter(i =>
-          i.title.toLowerCase().includes(q) ||
-          i.description.toLowerCase().includes(q) ||
-          (i.location_description || '').toLowerCase().includes(q)
-        )
-      }
-      setTotalCount(filtered.length)
-      const start = (page - 1) * PAGE_SIZE
-      setIssues(filtered.slice(start, start + PAGE_SIZE))
+    } catch (err) {
+      setError(err?.userMessage || 'Could not load reports. Please try again.')
+      setIssues([])
+      setTotalCount(0)
     } finally { setLoading(false) }
   }, [page, statusFilter, catFilter, search])
 
@@ -157,7 +133,6 @@ export default function ViewRequestsPage() {
               <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Community Reports</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                 Public facility issues submitted by residents across New Zealand
-                {usedMock && <span className="ml-2 text-xs font-medium" style={{ color: '#f59e0b' }}>(demo — backend offline)</span>}
               </p>
             </div>
             <Link to="/report" className="btn-primary text-sm shrink-0 hidden sm:flex">

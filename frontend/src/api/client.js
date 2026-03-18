@@ -106,4 +106,8 @@ export const healthApi = {
   check: () => apiClient.get('/api/health/'),
 }
 
+export const statsApi = {
+  public: () => apiClient.get('/api/stats/'),
+}
+
 export default apiClient
