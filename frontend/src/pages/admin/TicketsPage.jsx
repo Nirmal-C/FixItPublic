@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, RefreshCw, MapPin, User, Calendar, Image, Download } from 'lucide-react'
+import { Search, X, RefreshCw, MapPin, User, Calendar, Image, Download, AlertTriangle } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { requestsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
@@ -90,6 +90,9 @@ export default function TicketsPage() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [editStatus, setEditStatus] = useState('')
   const [editCrew, setEditCrew] = useState('')
+  const [editEscalated, setEditEscalated] = useState(false)
+  const [editEscalationLevel, setEditEscalationLevel] = useState('')
+  const [editEscalationNote, setEditEscalationNote] = useState('')
 
   const toast = useToast()
 
@@ -127,7 +130,10 @@ export default function TicketsPage() {
   const openPanel = (ticket) => {
     setSelectedTicket(ticket)
     setEditStatus(ticket.status)
-    setEditCrew('')
+    setEditCrew(ticket.assigned_crew || '')
+    setEditEscalated(ticket.escalated || false)
+    setEditEscalationLevel(ticket.escalation_level || '')
+    setEditEscalationNote(ticket.escalation_note || '')
     setPanelOpen(true)
   }
 
@@ -139,12 +145,28 @@ export default function TicketsPage() {
   const handleSave = async () => {
     if (!selectedTicket) return
     setSaving(true)
-    const update = { ...selectedTicket, status: editStatus }
+    const update = {
+      ...selectedTicket,
+      status:           editStatus,
+      assigned_crew:    editCrew,
+      escalated:        editEscalated,
+      escalation_level: editEscalated ? editEscalationLevel : '',
+      escalation_note:  editEscalated ? editEscalationNote  : '',
+    }
     try {
-      await requestsApi.updateStatus(selectedTicket.id, editStatus)
+      // Update status and crew/escalation in parallel
+      await Promise.all([
+        requestsApi.updateStatus(selectedTicket.id, editStatus),
+        requestsApi.assign(selectedTicket.id, {
+          assigned_crew:    editCrew,
+          escalated:        editEscalated,
+          escalation_level: editEscalated ? editEscalationLevel : '',
+          escalation_note:  editEscalated ? editEscalationNote  : '',
+        }),
+      ])
       setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
       setSelectedTicket(update)
-      toast.success(`Status → ${editStatus}`, { title: `Ticket #${selectedTicket.id} updated` })
+      toast.success(`Ticket #${selectedTicket.id} updated`, { title: 'Changes saved' })
     } catch {
       // Backend offline — update in-memory only so the admin can still work
       setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
@@ -417,6 +439,20 @@ export default function TicketsPage() {
                     <Calendar size={13} className="shrink-0 text-slate-500" />
                     {formatDate(selectedTicket.created_at)}
                   </div>
+                  {selectedTicket.assigned_crew && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-slate-500">Crew:</span>
+                      <span className="font-medium text-indigo-400">
+                        {MOCK_CREWS.find((c) => c.id === selectedTicket.assigned_crew)?.label || selectedTicket.assigned_crew}
+                      </span>
+                    </div>
+                  )}
+                  {selectedTicket.escalated && (
+                    <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                      <AlertTriangle size={12} />
+                      <span>Escalated{selectedTicket.escalation_level ? ` → ${selectedTicket.escalation_level.replace('_', ' ')}` : ''}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Photo / Before-After Slider.
@@ -535,7 +571,61 @@ export default function TicketsPage() {
                         <option key={c.id} value={c.id}>{c.label} ({c.specialty})</option>
                       ))}
                     </select>
-                    <p className="form-hint mt-1">Crew assignment is stored locally — Sprint 3 will persist this to the backend.</p>
+                  </div>
+
+                  {/* Escalation */}
+                  <div className="flex flex-col gap-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editEscalated}
+                        onChange={(e) => {
+                          setEditEscalated(e.target.checked)
+                          if (!e.target.checked) {
+                            setEditEscalationLevel('')
+                            setEditEscalationNote('')
+                          }
+                        }}
+                        className="w-4 h-4 rounded accent-amber-500"
+                      />
+                      <span className="text-sm font-medium flex items-center gap-1.5" style={{ color: editEscalated ? '#f59e0b' : 'var(--text-secondary)' }}>
+                        <AlertTriangle size={13} />
+                        Escalate Ticket
+                      </span>
+                    </label>
+
+                    {editEscalated && (
+                      <div className="flex flex-col gap-3 pl-6">
+                        <div>
+                          <label className="form-label">Escalation Level</label>
+                          <select
+                            value={editEscalationLevel}
+                            onChange={(e) => setEditEscalationLevel(e.target.value)}
+                            className="form-input text-sm"
+                          >
+                            <option value="">— Select level —</option>
+                            <option value="senior_engineer">Senior Engineer</option>
+                            <option value="council_manager">Council Manager</option>
+                            <option value="emergency">Emergency Services</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label">Escalation Note</label>
+                          <textarea
+                            value={editEscalationNote}
+                            onChange={(e) => setEditEscalationNote(e.target.value)}
+                            placeholder="Why is this being escalated?"
+                            rows={3}
+                            className="form-input text-sm resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show current escalation info if ticket is already escalated */}
+                    {!editEscalated && selectedTicket.escalated && (
+                      <p className="text-xs text-amber-400 pl-6">Previously escalated — uncheck clears escalation data.</p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -9,7 +9,7 @@ from .views import (
     UserListView, UserCreateView, UserDetailView,
     AdminUserListView,
     TicketListCreateView, TicketDetailView,
-    TicketStatusUpdateView, MyTicketsView,
+    TicketStatusUpdateView, TicketAssignView, MyTicketsView,
 )
 
 
@@ -44,4 +44,5 @@ urlpatterns = [
     path('requests/mine/',            MyTicketsView.as_view(),          name='ticket-mine'),
     path('requests/<int:pk>/',        TicketDetailView.as_view(),       name='ticket-detail'),
     path('requests/<int:pk>/status/', TicketStatusUpdateView.as_view(), name='ticket-status'),
+    path('requests/<int:pk>/assign/', TicketAssignView.as_view(),       name='ticket-assign'),
 ]
