@@ -135,7 +135,7 @@ export default function UsersPage() {
 
       {/* Create form */}
       {showForm && (
-        <div className="glass p-6 animate-slide-up">
+        <div className="glass p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Create Admin / Superuser</h3>
             <button onClick={() => setShowForm(false)} className="btn-ghost p-1.5"><X size={15} /></button>

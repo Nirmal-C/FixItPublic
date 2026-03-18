@@ -138,7 +138,7 @@ function AILogEntry({ entry }) {
   const confidencePct = Math.round(entry.confidence * 100)
 
   return (
-    <div className="glass p-5 flex flex-col gap-4 animate-slide-up">
+    <div className="glass p-5 flex flex-col gap-4">
       {/* Entry header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -194,7 +194,7 @@ function AILogEntry({ entry }) {
         </button>
 
         {expanded && (
-          <ul className="mt-2 flex flex-col gap-2 animate-slide-down">
+          <ul className="mt-2 flex flex-col gap-2">
             {entry.reasoning.map((step, i) => (
               <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
                 <span
