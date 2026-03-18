@@ -7,6 +7,13 @@ import apiClient from '../../api/client'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { useToast } from '../../components/Toast'
 
+// Always use the admin token for superuser API calls regardless of citizen session
+const A_ACCESS = 'pfmrs_access_token'
+const adminHeaders = () => {
+  const token = localStorage.getItem(A_ACCESS)
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 const ROLE_STYLES = {
   superuser: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'Superuser', Icon: ShieldAlert },
   admin:     { color: '#0077C8', bg: 'rgba(0,119,200,0.12)',  label: 'Admin',     Icon: ShieldCheck },
@@ -35,7 +42,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiClient.get('/api/superuser/users/')
+      const res = await apiClient.get('/api/superuser/users/', { headers: adminHeaders() })
       setUsers(Array.isArray(res.data) ? res.data : res.data.results || [])
     } catch {
       toast.error('Failed to load users.')
@@ -51,7 +58,7 @@ export default function UsersPage() {
     setFormErrors({})
     setSubmitting(true)
     try {
-      await apiClient.post('/api/superuser/users/create/', form)
+      await apiClient.post('/api/superuser/users/create/', form, { headers: adminHeaders() })
       toast.success(`${form.role} account created`, { title: form.username })
       setForm({ username: '', email: '', password: '', password2: '', phone: '', role: 'admin' })
       setShowForm(false)
@@ -67,7 +74,7 @@ export default function UsersPage() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await apiClient.patch(`/api/superuser/users/${userId}/`, { role: newRole })
+      await apiClient.patch(`/api/superuser/users/${userId}/`, { role: newRole }, { headers: adminHeaders() })
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u))
       toast.success(`Role updated to ${newRole}`)
     } catch (err) {
@@ -77,7 +84,7 @@ export default function UsersPage() {
 
   const handleToggleActive = async (u) => {
     try {
-      await apiClient.patch(`/api/superuser/users/${u.id}/`, { is_active: !u.is_active })
+      await apiClient.patch(`/api/superuser/users/${u.id}/`, { is_active: !u.is_active }, { headers: adminHeaders() })
       setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_active: !u.is_active } : x))
       toast.success(`${u.username} ${!u.is_active ? 'activated' : 'deactivated'}`)
     } catch (err) {
@@ -88,7 +95,7 @@ export default function UsersPage() {
   const handleDelete = async (u) => {
     setDeleting(u.id)
     try {
-      await apiClient.delete(`/api/superuser/users/${u.id}/`)
+      await apiClient.delete(`/api/superuser/users/${u.id}/`, { headers: adminHeaders() })
       setUsers((prev) => prev.filter((x) => x.id !== u.id))
       toast.success(`${u.username} deleted`)
     } catch (err) {
