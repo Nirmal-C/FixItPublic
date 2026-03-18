@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, RefreshCw, MapPin, User, Calendar, Image, Download, AlertTriangle } from 'lucide-react'
+import { Search, X, RefreshCw, MapPin, User, Calendar, Image, Download, AlertTriangle, Maximize2, ChevronLeft, ChevronRight, Mail } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { requestsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
@@ -77,6 +77,241 @@ function formatDate(dateStr) {
   }).format(new Date(dateStr))
 }
 
+// Full-screen ticket detail modal with photo gallery + lightbox.
+// Defined outside TicketsPage so it has a stable component reference.
+function TicketModal({ ticket, onClose }) {
+  const [lightboxIdx, setLightboxIdx] = useState(null)
+
+  const photos = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+    .map((k) => photoUrl(ticket[k]))
+    .filter(Boolean)
+
+  const cat = CATEGORY_MAP[ticket.category] || {
+    label: ticket.category, color: '#94a3b8',
+    bgColor: 'rgba(148,163,184,0.1)', icon: 'HelpCircle',
+  }
+  const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
+
+  // Keyboard navigation: Escape closes lightbox (or modal), arrows navigate photos
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        if (lightboxIdx !== null) setLightboxIdx(null)
+        else onClose()
+      }
+      if (lightboxIdx !== null) {
+        if (e.key === 'ArrowLeft')  setLightboxIdx((i) => (i - 1 + photos.length) % photos.length)
+        if (e.key === 'ArrowRight') setLightboxIdx((i) => (i + 1) % photos.length)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIdx, onClose, photos.length])
+
+  return (
+    <>
+      {/* Modal backdrop */}
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+        onClick={onClose}
+      >
+        {/* Modal card — stop clicks propagating to backdrop */}
+        <div
+          className="glass w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between px-6 py-4 shrink-0"
+            style={{ borderBottom: '1px solid var(--divider)' }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-xs text-slate-500 font-mono shrink-0">#{ticket.id}</span>
+              <h2 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                {ticket.title}
+              </h2>
+            </div>
+            <button onClick={onClose} className="btn-ghost p-1.5 shrink-0 ml-3">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-6 flex flex-col gap-6">
+            {/* Badges row */}
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge status={ticket.status} />
+              <span
+                className="badge border text-xs inline-flex items-center gap-1"
+                style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+              >
+                <CatIcon size={11} /> {cat.label}
+              </span>
+              {ticket.escalated && (
+                <span
+                  className="badge border text-xs inline-flex items-center gap-1"
+                  style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.4)' }}
+                >
+                  <AlertTriangle size={11} /> Escalated
+                </span>
+              )}
+            </div>
+
+            {/* Two-column layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Left: details */}
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5 uppercase tracking-wider font-semibold">Description</p>
+                  <p className="text-sm text-slate-300 leading-relaxed">{ticket.description}</p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {ticket.location_description && (
+                    <div className="flex items-start gap-2 text-sm text-slate-400">
+                      <MapPin size={14} className="shrink-0 mt-0.5 text-slate-500" />
+                      {ticket.location_description}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <User size={14} className="shrink-0 text-slate-500" />
+                    {ticket.reporter_name || <span className="italic">Anonymous</span>}
+                  </div>
+                  {ticket.reporter_email && (
+                    <div className="flex items-center gap-2 text-sm text-slate-400">
+                      <Mail size={14} className="shrink-0 text-slate-500" />
+                      {ticket.reporter_email}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Calendar size={14} className="shrink-0 text-slate-500" />
+                    {formatDate(ticket.created_at)}
+                  </div>
+                  {ticket.assigned_crew && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-slate-500">Crew:</span>
+                      <span className="font-medium text-indigo-400">
+                        {MOCK_CREWS.find((c) => c.id === ticket.assigned_crew)?.label || ticket.assigned_crew}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {ticket.escalated && ticket.escalation_note && (
+                  <div
+                    className="p-3 rounded-xl"
+                    style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}
+                  >
+                    <p className="text-xs font-semibold text-amber-400 mb-1">Escalation Note</p>
+                    <p className="text-sm text-amber-200/80">{ticket.escalation_note}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: photo gallery */}
+              <div className="flex flex-col gap-3">
+                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                  Photos{photos.length > 0 ? ` (${photos.length})` : ''}
+                </p>
+
+                {photos.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {photos.map((url, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setLightboxIdx(i)}
+                        className="relative aspect-square rounded-xl overflow-hidden group focus:outline-none"
+                        style={{ background: 'rgba(255,255,255,0.04)' }}
+                      >
+                        <img
+                          src={url}
+                          alt={`Photo ${i + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                        <div
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: 'rgba(0,0,0,0.45)' }}
+                        >
+                          <Maximize2 size={22} className="text-white drop-shadow" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : ticket.before_photo && ticket.after_photo ? (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs text-slate-500">Before / After comparison</p>
+                    <BeforeAfterSlider beforeSrc={ticket.before_photo} afterSrc={ticket.after_photo} />
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-center justify-center h-32 rounded-xl gap-2"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--card-border)' }}
+                  >
+                    <Image size={18} className="text-slate-600" />
+                    <span className="text-sm text-slate-600">No photos attached</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lightbox — renders above the modal */}
+      {lightboxIdx !== null && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.95)' }}
+          onClick={() => setLightboxIdx(null)}
+        >
+          {/* Close */}
+          <button
+            className="absolute top-4 right-4 btn-ghost p-2 text-white"
+            onClick={() => setLightboxIdx(null)}
+          >
+            <X size={22} />
+          </button>
+
+          {/* Prev / Next */}
+          {photos.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 btn-ghost p-3 text-white"
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i - 1 + photos.length) % photos.length) }}
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 btn-ghost p-3 text-white"
+                onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i + 1) % photos.length) }}
+              >
+                <ChevronRight size={32} />
+              </button>
+            </>
+          )}
+
+          {/* Image */}
+          <img
+            src={photos[lightboxIdx]}
+            alt={`Photo ${lightboxIdx + 1} of ${photos.length}`}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Counter */}
+          {photos.length > 1 && (
+            <div className="absolute bottom-5 text-sm text-white/50">
+              {lightboxIdx + 1} / {photos.length}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function TicketsPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -88,6 +323,7 @@ export default function TicketsPage() {
 
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
   const [editStatus, setEditStatus] = useState('')
   const [editCrew, setEditCrew] = useState('')
   const [editEscalated, setEditEscalated] = useState(false)
@@ -388,9 +624,18 @@ export default function TicketsPage() {
                 <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
                   Ticket #{selectedTicket.id}
                 </h3>
-                <button onClick={closePanel} className="btn-ghost p-1.5">
-                  <X size={16} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="btn-ghost p-1.5"
+                    title="Full view"
+                  >
+                    <Maximize2 size={15} />
+                  </button>
+                  <button onClick={closePanel} className="btn-ghost p-1.5">
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable body */}
@@ -647,6 +892,11 @@ export default function TicketsPage() {
           </>
         )}
       </div>
+
+      {/* Full-screen detail modal */}
+      {modalOpen && selectedTicket && (
+        <TicketModal ticket={selectedTicket} onClose={() => setModalOpen(false)} />
+      )}
     </div>
   )
 }
