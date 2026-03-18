@@ -60,7 +60,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="glass p-8 flex flex-col gap-6">
           <div className="text-center">
-            <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Sign in</h1>
+            <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Sign In</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
               Access your reports and track your submissions
             </p>

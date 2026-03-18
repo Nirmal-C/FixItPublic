@@ -331,7 +331,7 @@ export default function AILogPage() {
         {['all', 'success', 'escalated'].map((s) => (
           <button
             key={s}
-            onClick={() => setStatusFilter(s)}
+            onClick={() => setStatusFilter(s === statusFilter ? 'all' : s)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 capitalize ${
               statusFilter === s
                 ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
@@ -347,7 +347,7 @@ export default function AILogPage() {
           return (
             <button
               key={c}
-              onClick={() => setCategoryFilter(c)}
+              onClick={() => setCategoryFilter(c === categoryFilter ? 'all' : c)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
                 categoryFilter === c
                   ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
