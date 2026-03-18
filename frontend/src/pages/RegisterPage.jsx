@@ -85,6 +85,7 @@ export default function RegisterPage() {
         username:   form.username.trim(),
         email:      form.email.trim(),
         password:   form.password,
+        password2:  form.confirm,
         first_name: form.first_name.trim(),
       })
       toast.success('Account created successfully!', { title: 'Welcome!' })
