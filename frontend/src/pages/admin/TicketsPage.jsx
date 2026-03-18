@@ -5,6 +5,7 @@ import { requestsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import EmptyState from '../../components/EmptyState'
+import BeforeAfterSlider from '../../components/BeforeAfterSlider'
 import { useToast } from '../../components/Toast'
 import { STATUSES, CATEGORY_MAP, MOCK_CREWS } from '../../utils/constants'
 
@@ -41,6 +42,8 @@ const MOCK_ISSUES = [
     description: "The main slide at the children's playground has a crack near the top that could cause injury to children.",
     location_description: 'Victoria Park, Victoria St West, Auckland',
     reporter_name: 'James T.', created_at: '2025-02-20T08:00:00Z', photo: null,
+    before_photo: 'https://picsum.photos/seed/park-before-3/600/340',
+    after_photo: 'https://picsum.photos/seed/park-after-3/600/340',
   },
   {
     id: 4, title: 'Footpath cracked and uneven near bus stop',
@@ -55,6 +58,8 @@ const MOCK_ISSUES = [
     description: 'Extensive graffiti covering the north and east walls of the toilet block. Some content is offensive.',
     location_description: 'Myers Park public toilets, Mayoral Dr, Auckland',
     reporter_name: null, created_at: '2025-02-25T16:20:00Z', photo: null,
+    before_photo: 'https://picsum.photos/seed/graffiti-before-5/600/340',
+    after_photo: 'https://picsum.photos/seed/graffiti-after-5/600/340',
   },
   {
     id: 6, title: 'Bus shelter roof collapsed — safety hazard',
@@ -414,10 +419,19 @@ export default function TicketsPage() {
                   </div>
                 </div>
 
-                {/* Photo — proxied through Django so the private Azure container is never
-                    called directly from the browser. photoUrl() converts the stored relative
-                    path into /api/photos/<path>/ which Django fetches with a fresh SAS token. */}
-                {selectedTicket.photo ? (
+                {/* Photo / Before-After Slider.
+                    Resolved tickets may have before_photo + after_photo for the comparison slider.
+                    Regular photos are proxied through Django (photoUrl) so the private Azure
+                    container is never called directly from the browser. */}
+                {selectedTicket.before_photo && selectedTicket.after_photo ? (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Before / After</p>
+                    <BeforeAfterSlider
+                      beforeSrc={selectedTicket.before_photo}
+                      afterSrc={selectedTicket.after_photo}
+                    />
+                  </div>
+                ) : selectedTicket.photo ? (
                   <img
                     src={photoUrl(selectedTicket.photo)}
                     alt="Report photo"

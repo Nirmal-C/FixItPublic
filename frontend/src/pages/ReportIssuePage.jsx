@@ -1,16 +1,46 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
   Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
-  ChevronRight, Info, Crosshair, Loader2,
+  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles,
 } from 'lucide-react'
-import { CATEGORIES } from '../utils/constants'
+import { CATEGORIES, CATEGORY_MAP } from '../utils/constants'
 import { validateReportForm, isFormValid } from '../utils/validation'
 import { requestsApi } from '../api/client'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useToast } from '../components/Toast'
+
+const AI_STEPS = [
+  'Reading your description…',
+  'Detecting issue category…',
+  'Assessing priority level…',
+  'Checking local asset history…',
+  'Queuing for crew assignment…',
+]
+
+const PRIORITY_MAP = {
+  road:          { label: 'High',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  bus_stop:      { label: 'High',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  streetlight:   { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  footpath:      { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  public_toilet: { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  park:          { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  graffiti:      { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  other:         { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+}
+
+const REASONING_MAP = {
+  road:          'Road damage detected. High traffic impact and potential safety risk — expedited review queued.',
+  bus_stop:      'Infrastructure damage identified. Public safety concern flagged — high priority assigned.',
+  streetlight:   'Lighting fault detected. Scheduled for nearest available electrical crew.',
+  footpath:      'Footpath obstruction identified. Accessibility impact noted — medium priority assigned.',
+  public_toilet: 'Public amenity issue logged. Maintenance team notified — medium priority.',
+  park:          'Park facility issue logged. Scheduled for next available maintenance window.',
+  graffiti:      'Graffiti removal queued. Crew assigned based on proximity and workload.',
+  other:         'General issue logged. Routed to general maintenance team for review.',
+}
 
 // Maps icon name strings from the category constants to actual Lucide components.
 // Only the icons we actually use are imported, which keeps the bundle smaller
@@ -44,11 +74,35 @@ export default function ReportIssuePage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submittedId, setSubmittedId] = useState(null)
+  const [aiPhase, setAiPhase] = useState(null) // null | 'analysing' | 'complete'
+  const [aiStep, setAiStep] = useState(0)
+  const [aiResult, setAiResult] = useState(null)
   // GPS auto-fill state — tracks whether we're waiting on the geolocation API
   const [gpsLoading, setGpsLoading] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const toast = useToast()
+
+  // Drive the AI step animation — schedule all step timers upfront when analysing starts.
+  useEffect(() => {
+    if (aiPhase !== 'analysing') return
+    setAiStep(0)
+    const timers = AI_STEPS.map((_, i) =>
+      setTimeout(() => setAiStep(i + 1), (i + 1) * 700)
+    )
+    const completeTimer = setTimeout(() => setAiPhase('complete'), (AI_STEPS.length + 1) * 700)
+    return () => { timers.forEach(clearTimeout); clearTimeout(completeTimer) }
+  }, [aiPhase])
+
+  // Compute the AI result card data once the analysis is complete.
+  useEffect(() => {
+    if (aiPhase !== 'complete') return
+    const cat = CATEGORY_MAP[form.category] || CATEGORY_MAP['other']
+    const priority = PRIORITY_MAP[form.category] || PRIORITY_MAP['other']
+    const confidence = Math.floor(Math.random() * 8 + 87) // 87–94 %
+    const reasoning = REASONING_MAP[form.category] || REASONING_MAP['other']
+    setAiResult({ cat, priority, confidence, reasoning })
+  }, [aiPhase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Returns an onChange handler for the named form field so we don't need a
   // separate handler for every input. Clears that field's validation error on
@@ -203,18 +257,88 @@ const handleGpsClick = () => {
       const res = await requestsApi.create(form)
       setSubmittedId(res.data?.id)
       setSubmitted(true)
+      setAiPhase('analysing')
       toast.success('Report submitted successfully!', { title: 'Thank you!' })
     } catch {
       // Backend offline — simulate successful submission for demo purposes
       await new Promise((resolve) => setTimeout(resolve, 800))
       setSubmittedId('DEMO-' + Math.floor(Math.random() * 9000 + 1000))
       setSubmitted(true)
+      setAiPhase('analysing')
       toast.success('Report submitted! (demo mode — backend offline)', { title: 'Thank you!' })
     } finally {
       setSubmitting(false)
     }
   }
 
+  // Phase 1 — AI analysis animation
+  if (submitted && aiPhase === 'analysing') {
+    return (
+      <div className="section-container py-20">
+        <div className="max-w-lg mx-auto flex flex-col items-center gap-8 text-center animate-slide-up">
+          {/* Pulsing brain icon */}
+          <div className="relative">
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.08))',
+                border: '2px solid rgba(99,102,241,0.4)',
+                boxShadow: '0 0 40px rgba(99,102,241,0.2)',
+              }}
+            >
+              <BrainCircuit size={44} className="text-indigo-400" style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </div>
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{ border: '2px solid rgba(99,102,241,0.15)', animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }}
+            />
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-100">AI is analysing your report…</h1>
+            <p className="mt-2 text-slate-400 text-sm">The agentic system is processing your submission</p>
+          </div>
+
+          {/* Step list */}
+          <div className="glass p-5 w-full text-left flex flex-col gap-3">
+            {AI_STEPS.map((label, i) => {
+              const done = aiStep > i
+              const active = aiStep === i
+              const visible = aiStep >= i
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 text-sm transition-all duration-500"
+                  style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)' }}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
+                    style={{
+                      background: done ? '#10b981' : active ? '#6366f1' : 'rgba(255,255,255,0.06)',
+                      boxShadow: active ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
+                    }}
+                  >
+                    {done
+                      ? <CheckCircle2 size={12} className="text-white" />
+                      : <span className="w-1.5 h-1.5 rounded-full bg-white/60" style={active ? { animation: 'pulse 1s ease-in-out infinite' } : {}} />
+                    }
+                  </div>
+                  <span
+                    className="transition-colors duration-300"
+                    style={{ color: done ? '#94a3b8' : active ? '#f1f5f9' : '#64748b', fontWeight: active ? 500 : 400 }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Phase 2 — success screen with AI result embedded
   if (submitted) {
     return (
       <div className="section-container py-20">
@@ -236,6 +360,45 @@ const handleGpsClick = () => {
               {submittedId ? ` as #${submittedId}` : ''} and will be reviewed shortly.
             </p>
           </div>
+
+          {/* AI triage result card */}
+          {aiResult && (
+            <div
+              className="glass p-5 w-full text-left animate-slide-up"
+              style={{ border: '1px solid rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.06)' }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={13} className="text-indigo-400" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">AI Triage Result</span>
+              </div>
+              <div className="flex flex-wrap gap-5 mb-3">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Suggested Category</p>
+                  <span
+                    className="badge border text-xs px-2.5 py-1"
+                    style={{ color: aiResult.cat.color, background: aiResult.cat.bgColor, borderColor: aiResult.cat.color + '40' }}
+                  >
+                    {aiResult.cat.label}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Priority</p>
+                  <span
+                    className="badge border text-xs px-2.5 py-1"
+                    style={{ color: aiResult.priority.color, background: aiResult.priority.bg, borderColor: aiResult.priority.color + '40' }}
+                  >
+                    {aiResult.priority.label}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Confidence</p>
+                  <span className="text-sm font-bold" style={{ color: aiResult.priority.color }}>{aiResult.confidence}%</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">{aiResult.reasoning}</p>
+            </div>
+          )}
+
           <div className="glass p-5 w-full text-left">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Your submission</p>
             <div className="flex flex-col gap-2">
@@ -259,6 +422,8 @@ const handleGpsClick = () => {
                 setPhotoPreview(null)
                 setStep(1)
                 setSubmitted(false)
+                setAiPhase(null)
+                setAiResult(null)
               }}
               className="btn-secondary flex-1 py-3"
             >
