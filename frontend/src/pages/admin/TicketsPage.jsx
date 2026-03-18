@@ -8,7 +8,7 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import EmptyState from '../../components/EmptyState'
 import BeforeAfterSlider from '../../components/BeforeAfterSlider'
 import { useToast } from '../../components/Toast'
-import { STATUSES, CATEGORY_MAP, MOCK_CREWS } from '../../utils/constants'
+import { STATUSES, CATEGORY_MAP, CREWS, CREW_MAP } from '../../utils/constants'
 
 // Proxy all images through Django — never call Azure directly (private container).
 // Accepts either a relative path ("tickets/2026/03/photo.jpg") or a full Azure
@@ -51,55 +51,6 @@ function PanelPhotoSlider({ photos }) {
     </div>
   )
 }
-
-const MOCK_ISSUES = [
-  {
-    id: 1, title: 'Broken streetlight on Queen St near No. 42',
-    category: 'streetlight', status: 'in_progress',
-    description: 'The streetlight has been out for over two weeks. It creates a dangerous dark spot at night especially near the bus stop.',
-    location_description: 'Queen St, Auckland CBD, near intersection with Wellesley St',
-    reporter_name: 'Sarah K.', created_at: '2025-03-01T09:12:00Z', photo: null,
-  },
-  {
-    id: 2, title: 'Deep pothole on Ponsonby Rd causing tyre damage',
-    category: 'road', status: 'pending',
-    description: 'There is a large pothole approximately 30cm wide and 10cm deep. Multiple vehicles have been damaged.',
-    location_description: 'Ponsonby Rd, between Franklin Rd and Mackelvie St',
-    reporter_name: null, created_at: '2025-03-03T14:30:00Z', photo: null,
-  },
-  {
-    id: 3, title: 'Playground slide damaged at Victoria Park',
-    category: 'park', status: 'resolved',
-    description: "The main slide at the children's playground has a crack near the top that could cause injury to children.",
-    location_description: 'Victoria Park, Victoria St West, Auckland',
-    reporter_name: 'James T.', created_at: '2025-02-20T08:00:00Z', photo: null,
-    before_photo: 'https://picsum.photos/seed/park-before-3/600/340',
-    after_photo: 'https://picsum.photos/seed/park-after-3/600/340',
-  },
-  {
-    id: 4, title: 'Footpath cracked and uneven near bus stop',
-    category: 'footpath', status: 'pending',
-    description: 'Section of footpath has lifted significantly due to tree roots. Accessibility is severely compromised for wheelchair users and the elderly.',
-    location_description: 'Dominion Rd near Valley Rd bus stop, Mount Eden',
-    reporter_name: 'Aroha W.', created_at: '2025-03-05T11:45:00Z', photo: null,
-  },
-  {
-    id: 5, title: 'Graffiti on public toilet block',
-    category: 'graffiti', status: 'resolved',
-    description: 'Extensive graffiti covering the north and east walls of the toilet block. Some content is offensive.',
-    location_description: 'Myers Park public toilets, Mayoral Dr, Auckland',
-    reporter_name: null, created_at: '2025-02-25T16:20:00Z', photo: null,
-    before_photo: 'https://picsum.photos/seed/graffiti-before-5/600/340',
-    after_photo: 'https://picsum.photos/seed/graffiti-after-5/600/340',
-  },
-  {
-    id: 6, title: 'Bus shelter roof collapsed — safety hazard',
-    category: 'bus_stop', status: 'in_progress',
-    description: "The roof of the bus shelter has partially collapsed after last week's storm. Sharp metal edges are exposed.",
-    location_description: 'Great North Rd stop, Grey Lynn, outside No. 165',
-    reporter_name: 'Mohammed A.', created_at: '2025-03-06T07:30:00Z', photo: null,
-  },
-]
 
 function formatDate(dateStr) {
   if (!dateStr) return '—'
@@ -224,7 +175,7 @@ function TicketModal({ ticket, onClose }) {
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-slate-500">Crew:</span>
                       <span className="font-medium text-indigo-400">
-                        {MOCK_CREWS.find((c) => c.id === ticket.assigned_crew)?.label || ticket.assigned_crew}
+                        {CREW_MAP[ticket.assigned_crew]?.label || ticket.assigned_crew}
                       </span>
                     </div>
                   )}
@@ -345,10 +296,10 @@ function TicketModal({ ticket, onClose }) {
 }
 
 export default function TicketsPage() {
-  const [tickets, setTickets] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [usedMock, setUsedMock] = useState(false)
+  const [tickets, setTickets]       = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+  const [fetchError, setFetchError] = useState(null)
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -364,19 +315,17 @@ export default function TicketsPage() {
 
   const toast = useToast()
 
-  // Fetch the full ticket list in one go (page_size=999 avoids pagination for now).
-  // DRF can return a plain array or a {results:[]} envelope, so we handle both.
-  // If the API is unreachable we fall back to MOCK_ISSUES and show a banner.
+  // Fetch the full ticket list. DRF can return a plain array or {results:[]} envelope.
   const fetchTickets = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const res = await requestsApi.list({ page_size: 999 })
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setTickets(data)
-      setUsedMock(false)
-    } catch {
-      setUsedMock(true)
-      setTickets(MOCK_ISSUES)
+    } catch (err) {
+      setFetchError(err?.userMessage || 'Could not reach the backend.')
+      setTickets([])
     } finally {
       setLoading(false)
     }
@@ -435,11 +384,8 @@ export default function TicketsPage() {
       setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
       setSelectedTicket(update)
       toast.success(`Ticket ID ${selectedTicket.id} updated`, { title: 'Changes saved' })
-    } catch {
-      // Backend offline — update in-memory only so the admin can still work
-      setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
-      setSelectedTicket(update)
-      toast.warning('Saved locally (backend offline)', { title: `Ticket ID ${selectedTicket.id}` })
+    } catch (err) {
+      toast.error(err?.userMessage || 'Failed to save changes. Please try again.', { title: 'Save failed' })
     } finally {
       setSaving(false)
     }
@@ -537,10 +483,10 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {/* Ticket count + mock banner */}
+      {/* Ticket count + error banner */}
       <div className="flex items-center gap-3 text-xs text-slate-500">
         <span>Showing {filtered.length} of {tickets.length} tickets</span>
-        {usedMock && <span className="text-amber-400">(demo data — backend offline)</span>}
+        {fetchError && <span className="text-rose-400">⚠ {fetchError}</span>}
       </div>
 
       {/* Table + panel layout */}
@@ -728,7 +674,7 @@ export default function TicketsPage() {
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-slate-500">Crew:</span>
                       <span className="font-medium text-indigo-400">
-                        {MOCK_CREWS.find((c) => c.id === selectedTicket.assigned_crew)?.label || selectedTicket.assigned_crew}
+                        {CREW_MAP[selectedTicket.assigned_crew]?.label || selectedTicket.assigned_crew}
                       </span>
                     </div>
                   )}
@@ -861,7 +807,7 @@ export default function TicketsPage() {
                       className="form-input text-sm"
                     >
                       <option value="">— Unassigned —</option>
-                      {MOCK_CREWS.map((c) => (
+                      {CREWS.map((c) => (
                         <option key={c.id} value={c.id}>{c.label} ({c.specialty})</option>
                       ))}
                     </select>
