@@ -756,7 +756,15 @@ const handleGpsClick = () => {
                         accept="image/jpeg,image/png,image/webp,image/gif"
                         multiple
                         className="hidden"
-                        onChange={(e) => { if (e.target.files?.length) addPhotos(e.target.files) }}
+                        onChange={(e) => {
+                          if (e.target.files?.length) {
+                            addPhotos(e.target.files)
+                            // Reset value immediately so the next pick always fires onChange,
+                            // even if the user selects a file with the same name (common on
+                            // mobile where camera saves are all called "image.jpg").
+                            e.target.value = ''
+                          }
+                        }}
                       />
                       <div className="flex flex-col items-center gap-3 py-8 px-6 text-center">
                         <div
