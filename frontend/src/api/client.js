@@ -67,6 +67,7 @@ export const requestsApi = {
     return apiClient.post('/api/requests/', data)
   },
   updateStatus: (id, status) => apiClient.patch(`/api/requests/${id}/status/`, { status }),
+  assign:       (id, data)   => apiClient.patch(`/api/requests/${id}/assign/`, data),
 }
 
 export const authApi = {

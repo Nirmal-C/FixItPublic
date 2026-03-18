@@ -25,6 +25,20 @@ class User(AbstractUser):
         return f'{self.username} ({self.get_role_display()})'
 
 
+# Maps each issue category to the crew best suited to handle it.
+# Used during ticket creation to auto-assign before a human reviews.
+CATEGORY_CREW_MAP = {
+    'streetlight':   'crew-bravo',
+    'road':          'crew-alpha',
+    'footpath':      'crew-alpha',
+    'park':          'crew-charlie',
+    'graffiti':      'crew-delta',
+    'bus_stop':      'crew-echo',
+    'public_toilet': 'crew-echo',
+    'other':         'crew-echo',
+}
+
+
 class MaintenanceTicket(models.Model):
 
     class Status(models.TextChoices):
@@ -43,6 +57,18 @@ class MaintenanceTicket(models.Model):
         GRAFFITI      = 'graffiti',      'Graffiti'
         OTHER         = 'other',         'Other'
 
+    class Crew(models.TextChoices):
+        ALPHA   = 'crew-alpha',   'Team Alpha — Roads & Footpaths'
+        BRAVO   = 'crew-bravo',   'Team Bravo — Streetlights & Electrical'
+        CHARLIE = 'crew-charlie', 'Team Charlie — Parks & Green Spaces'
+        DELTA   = 'crew-delta',   'Team Delta — Graffiti Removal'
+        ECHO    = 'crew-echo',    'Team Echo — General Maintenance'
+
+    class EscalationLevel(models.TextChoices):
+        SENIOR_ENGINEER  = 'senior_engineer',  'Senior Engineer'
+        COUNCIL_MANAGER  = 'council_manager',  'Council Manager'
+        EMERGENCY        = 'emergency',        'Emergency Services'
+
     title                = models.CharField(max_length=200)
     description          = models.TextField()
     category             = models.CharField(max_length=20, choices=Category.choices, default=Category.OTHER)
@@ -58,6 +84,25 @@ class MaintenanceTicket(models.Model):
     )
     lat        = models.FloatField(null=True, blank=True, help_text='Latitude of the reported issue')
     lng        = models.FloatField(null=True, blank=True, help_text='Longitude of the reported issue')
+
+    # Crew assignment — auto-set on creation, editable by admin
+    assigned_crew = models.CharField(
+        max_length=20, choices=Crew.choices, blank=True, default='',
+        help_text='Maintenance crew assigned to this ticket',
+    )
+
+    # Escalation — set by admin when the issue needs specialist or senior review
+    escalated         = models.BooleanField(default=False)
+    escalation_level  = models.CharField(
+        max_length=20, choices=EscalationLevel.choices, blank=True, default='',
+    )
+    escalation_note   = models.TextField(blank=True, default='')
+    escalated_at      = models.DateTimeField(null=True, blank=True)
+    escalated_by      = models.ForeignKey(
+        User, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='escalated_tickets',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
