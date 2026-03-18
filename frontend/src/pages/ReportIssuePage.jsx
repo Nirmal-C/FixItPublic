@@ -249,6 +249,77 @@ const handleGpsClick = () => {
     attempt(false, false)
   }
 
+  // GPS auto-fill: grabs the device coordinates then calls Nominatim (OpenStreetMap's
+  // free reverse-geocoding API) to convert lat/lng into a human-readable address.
+  // We fill location_description so the admin can still edit it if needed.
+const handleGpsClick = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.')
+      return
+    }
+    setGpsLoading(true)
+
+    // Try low-accuracy first (WiFi/IP based) — works reliably on desktops and
+    // laptops that have no GPS chip. If that also fails we show a helpful message.
+    // Two-pass approach: attempt 1 with enableHighAccuracy: false, if error code
+    // is 2 (position unavailable) retry once with a longer timeout before giving up.
+    const attempt = (highAccuracy, isRetry) => {
+      navigator.geolocation.getCurrentPosition(
+        async ({ coords }) => {
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+              { headers: { 'Accept-Language': 'en' } }
+            )
+            const data = await res.json()
+            // Nominatim returns a display_name like "42 Queen Street, Auckland CBD, Auckland, 1010, New Zealand"
+            // We trim off the postcode + country to keep it concise for the form.
+            const parts = (data.display_name || '').split(',')
+            const trimmed = parts.slice(0, -2).join(',').trim()
+            setForm((prev) => ({ ...prev, location_description: trimmed || data.display_name }))
+            setErrors((prev) => ({ ...prev, location_description: null }))
+            toast.success('Location filled in automatically!', { title: 'GPS detected' })
+          } catch {
+            // If Nominatim fails, fall back to raw coordinates — still useful for the team
+            setForm((prev) => ({
+              ...prev,
+              location_description: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+            }))
+            toast.warning('Could not reverse-geocode — raw coordinates used instead.')
+          } finally {
+            setGpsLoading(false)
+          }
+        },
+        (err) => {
+          // code 1 = permission denied — no point retrying
+          // code 2 = position unavailable — retry once with high accuracy off
+          // code 3 = timeout — retry once
+          if (!isRetry && err.code !== 1) {
+            // First failure — retry once with low accuracy and a longer timeout
+            attempt(false, true)
+            return
+          }
+          const msg = err.code === 1
+            ? 'Location access denied. Please type your location manually.'
+            : 'Could not detect your location. Please type it manually.'
+          toast.error(msg)
+          setGpsLoading(false)
+        },
+        {
+          // Omitting timeout entirely — the browser will wait as long as needed
+          // for the user to respond to the permission prompt before calling the
+          // error callback. With an explicit timeout the callback fires while the
+          // dialog is still showing, which produces a false "failed" message.
+          // maximumAge reuses a cached position up to 1 min old so repeat clicks
+          // are instant rather than triggering a fresh GPS lookup every time.
+          enableHighAccuracy: highAccuracy,
+          maximumAge: isRetry ? 0 : 60000,
+        }
+      )
+    }
+    attempt(false, false)
+  }
+
   // Only validates fields relevant to the current step before letting the user proceed.
   // Running full validation upfront would highlight step 3 errors while the user is
   // still filling out step 1, which is confusing. We collect the full error set each
