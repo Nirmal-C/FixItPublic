@@ -141,7 +141,7 @@ export default function DashboardPage() {
         {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }) => (
           <div
             key={key}
-            className="glass p-5 flex flex-col gap-3 hover:scale-[1.02] transition-transform duration-200 animate-slide-up"
+            className="glass p-5 flex flex-col gap-3 hover:scale-[1.02] transition-transform duration-200"
           >
             {loading ? (
               <div className="flex flex-col gap-3">
@@ -170,7 +170,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent tickets table */}
-      <div className="glass overflow-hidden animate-slide-up">
+      <div className="glass overflow-hidden">
         <div
           className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom: '1px solid var(--divider)' }}
@@ -267,7 +267,7 @@ export default function DashboardPage() {
         const max = counts[0]?.count || 1
 
         return (
-          <div className="glass p-6 flex flex-col gap-5 animate-slide-up">
+          <div className="glass p-6 flex flex-col gap-5">
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               Issues by Category
             </h3>
@@ -293,7 +293,7 @@ export default function DashboardPage() {
       })()}
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-3 animate-slide-up">
+      <div className="flex flex-wrap gap-3">
         <Link to="/admin/tickets" className="btn-primary text-sm gap-2">
           <Ticket size={15} />
           View All Tickets

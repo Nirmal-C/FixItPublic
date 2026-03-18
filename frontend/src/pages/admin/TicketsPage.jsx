@@ -119,7 +119,7 @@ function TicketModal({ ticket, onClose }) {
       >
         {/* Modal card — stop clicks propagating to backdrop */}
         <div
-          className="glass w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col animate-slide-up"
+          className="glass w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -614,7 +614,7 @@ export default function TicketsPage() {
               className={`
                 fixed right-0 top-0 h-full z-50 overflow-y-auto
                 md:relative md:right-auto md:top-auto md:h-auto md:z-auto
-                glass w-80 md:w-96 shrink-0 flex flex-col animate-slide-up
+                glass w-80 md:w-96 shrink-0 flex flex-col
               `}
               style={{ maxHeight: '100vh' }}
             >
