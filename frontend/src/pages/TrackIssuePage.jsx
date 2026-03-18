@@ -408,7 +408,7 @@ function TicketTracker({ id }) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-            <button onClick={() => navigate('/track')} className="btn-secondary flex-1 py-2.5 gap-2">
+            <button onClick={() => navigate('/track')} className="btn-secondary flex-1 py-2.5 gap-2 whitespace-nowrap">
               <Search size={14} /> Try another ID
             </button>
             <Link to="/report" className="btn-primary flex-1 py-2.5 text-center">
