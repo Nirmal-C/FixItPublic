@@ -410,10 +410,10 @@ const handleGpsClick = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button
-              onClick={() => navigate('/requests')}
+              onClick={() => submittedId ? navigate(`/track/${submittedId}`) : navigate('/requests')}
               className="btn-primary flex-1 py-3"
             >
-              View All Reports
+              {submittedId ? 'Track My Report' : 'View All Reports'}
             </button>
             <button
               onClick={() => {
