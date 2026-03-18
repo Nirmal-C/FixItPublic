@@ -36,6 +36,25 @@ function PasswordStrength({ password }) {
   )
 }
 
+// Defined outside RegisterPage so React gets a stable component reference.
+// If Field were defined inside the parent, every keystroke (setState) would
+// recreate the function, making React treat it as a new component type,
+// unmount+remount the input, and steal focus after each character typed.
+function Field({ id, label, icon: Icon, error, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className="form-label">
+        <Icon size={13} className="inline mr-1.5 text-indigo-400" />
+        {label}
+      </label>
+      {children}
+      {error && (
+        <p className="form-error mt-1"><AlertCircle size={12} /> {error}</p>
+      )}
+    </div>
+  )
+}
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     first_name: '',
