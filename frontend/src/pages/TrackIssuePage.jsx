@@ -1,95 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle2, Clock, Wrench, Search, MapPin, User,
-  BrainCircuit, Sparkles, AlertTriangle, ArrowLeft, RefreshCw,
-  Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
+  BrainCircuit, Sparkles, ArrowLeft, RefreshCw,
+  FileText, LogIn,
 } from 'lucide-react'
-import { CATEGORY_MAP } from '../utils/constants'
-
-// Mock ticket data — Sprint 3 will replace this with a real API call.
-const MOCK_TICKETS = {
-  '1': {
-    title: 'Broken streetlight on Queen St near No. 42',
-    category: 'streetlight',
-    status: 'in_progress',
-    location: 'Queen St, Auckland CBD, near Wellesley St',
-    reporter: 'Sarah K.',
-    submitted: '2025-03-01T09:12:00Z',
-    crew: { name: 'Team Bravo', specialty: 'Streetlights & Electrical', eta: '2:00 PM today' },
-    ai: { confidence: 91, priority: 'Medium', reasoning: 'Lighting fault detected. Scheduled for nearest available electrical crew.' },
-  },
-  '2': {
-    title: 'Deep pothole on Ponsonby Rd causing tyre damage',
-    category: 'road',
-    status: 'pending',
-    location: 'Ponsonby Rd, between Franklin Rd and Mackelvie St',
-    reporter: null,
-    submitted: '2025-03-03T14:30:00Z',
-    crew: null,
-    ai: { confidence: 87, priority: 'High', reasoning: 'Road damage detected. High traffic impact — expedited review queued.' },
-  },
-  '3': {
-    title: 'Playground slide damaged at Victoria Park',
-    category: 'park',
-    status: 'resolved',
-    location: 'Victoria Park, Victoria St West',
-    reporter: 'James T.',
-    submitted: '2025-02-20T08:00:00Z',
-    crew: { name: 'Team Charlie', specialty: 'Parks & Green Spaces', eta: null },
-    ai: { confidence: 93, priority: 'Low', reasoning: 'Park facility issue logged. Scheduled for next maintenance window.' },
-  },
-  '4': {
-    title: 'Footpath cracked and uneven near bus stop',
-    category: 'footpath',
-    status: 'in_progress',
-    location: 'Dominion Rd near Valley Rd bus stop, Mount Eden',
-    reporter: 'Aroha W.',
-    submitted: '2025-03-05T11:45:00Z',
-    crew: { name: 'Team Alpha', specialty: 'Roads & Footpaths', eta: 'Tomorrow 9:00 AM' },
-    ai: { confidence: 95, priority: 'Medium', reasoning: 'Accessibility impact noted — crew assigned with medium priority.' },
-  },
-  '5': {
-    title: 'Graffiti on public toilet block',
-    category: 'graffiti',
-    status: 'resolved',
-    location: 'Myers Park public toilets, Mayoral Dr',
-    reporter: null,
-    submitted: '2025-02-25T16:20:00Z',
-    crew: { name: 'Team Delta', specialty: 'Graffiti Removal', eta: null },
-    ai: { confidence: 98, priority: 'Low', reasoning: 'Graffiti removal queued. Crew assigned based on proximity.' },
-  },
-  '6': {
-    title: 'Bus shelter roof collapsed — safety hazard',
-    category: 'bus_stop',
-    status: 'in_progress',
-    location: 'Great North Rd stop, Grey Lynn, outside No. 165',
-    reporter: 'Mohammed A.',
-    submitted: '2025-03-06T07:30:00Z',
-    crew: { name: 'Team Bravo', specialty: 'Streetlights & Electrical', eta: '4:00 PM today' },
-    ai: { confidence: 89, priority: 'High', reasoning: 'Infrastructure damage identified. Public safety concern — high priority assigned.' },
-  },
-}
+import { CATEGORY_MAP, MOCK_CREWS } from '../utils/constants'
+import { requestsApi } from '../api/client'
+import { useCitizenAuth } from '../contexts/CitizenAuthContext'
+import StatusBadge from '../components/StatusBadge'
+import LoadingSpinner from '../components/LoadingSpinner'
 
 const STATUS_STEPS = [
-  { key: 'submitted',   label: 'Submitted',      icon: CheckCircle2, doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
-  { key: 'triage',      label: 'AI Triage',       icon: BrainCircuit, doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
-  { key: 'assigned',    label: 'Crew Assigned',   icon: User,         doneIf: ['in_progress', 'resolved', 'closed'] },
-  { key: 'in_progress', label: 'Work in Progress',icon: Wrench,       doneIf: ['in_progress', 'resolved', 'closed'] },
-  { key: 'resolved',    label: 'Resolved',        icon: CheckCircle2, doneIf: ['resolved', 'closed'] },
+  { key: 'submitted',   label: 'Submitted',       icon: CheckCircle2, doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
+  { key: 'triage',      label: 'AI Triage',        icon: BrainCircuit, doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
+  { key: 'assigned',    label: 'Crew Assigned',    icon: User,         doneIf: ['in_progress', 'resolved', 'closed'] },
+  { key: 'in_progress', label: 'Work in Progress', icon: Wrench,       doneIf: ['in_progress', 'resolved', 'closed'] },
+  { key: 'resolved',    label: 'Resolved',         icon: CheckCircle2, doneIf: ['resolved', 'closed'] },
 ]
 
-const PRIORITY_STYLE = {
-  High:   { color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  Medium: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  Low:    { color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+const PRIORITY_MAP = {
+  road:          { label: 'High',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  bus_stop:      { label: 'High',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  streetlight:   { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  footpath:      { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  public_toilet: { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  park:          { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  graffiti:      { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  other:         { label: 'Low',    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
 }
 
-const STATUS_STYLE = {
-  pending:     { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  label: 'Pending Review' },
-  in_progress: { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', label: 'In Progress' },
-  resolved:    { color: '#10b981', bg: 'rgba(16,185,129,0.12)', label: 'Resolved' },
-  closed:      { color: '#64748b', bg: 'rgba(100,116,139,0.12)',label: 'Closed' },
+const REASONING_MAP = {
+  road:          'Road damage detected. High traffic impact and potential safety risk — expedited review queued.',
+  bus_stop:      'Infrastructure damage identified. Public safety concern flagged — high priority assigned.',
+  streetlight:   'Lighting fault detected. Scheduled for nearest available electrical crew.',
+  footpath:      'Footpath obstruction identified. Accessibility impact noted — medium priority assigned.',
+  public_toilet: 'Public amenity issue logged. Maintenance team notified — medium priority.',
+  park:          'Park facility issue logged. Scheduled for next available maintenance window.',
+  graffiti:      'Graffiti removal queued. Crew assigned based on proximity and workload.',
+  other:         'General issue logged. Routed to general maintenance team for review.',
 }
 
 function formatDate(str) {
@@ -97,15 +46,165 @@ function formatDate(str) {
   return new Intl.DateTimeFormat('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(str))
 }
 
-// Search form shown when no ID in URL
-function TrackSearchForm() {
+// ── My Tickets list (shown when logged in + no ID in URL) ──────────────────
+
+function MyTicketsList() {
+  const navigate = useNavigate()
+  const { user } = useCitizenAuth()
+  const [tickets, setTickets] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await requestsApi.mine()
+      const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
+      setTickets(data)
+    } catch {
+      setError('Could not load your reports. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  return (
+    <div className="section-container py-10 animate-fade-in">
+      <div className="max-w-2xl mx-auto flex flex-col gap-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-100">My Reports</h1>
+            <p className="mt-1 text-slate-400 text-sm">
+              Reports submitted by <span className="text-indigo-400 font-medium">{user?.username}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={load}
+              disabled={loading}
+              className="btn-ghost flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300"
+            >
+              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+            <Link to="/report" className="btn-primary text-sm px-4 py-2">
+              New Report
+            </Link>
+          </div>
+        </div>
+
+        {/* Also search by ID */}
+        <TrackSearchForm compact />
+
+        {/* Tickets list */}
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="glass p-5">
+                <div className="skeleton h-4 rounded w-1/2 mb-2" />
+                <div className="skeleton h-3 rounded w-1/3" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="glass p-6 text-center">
+            <p className="text-slate-400 text-sm">{error}</p>
+            <button onClick={load} className="btn-secondary mt-3 text-sm">Retry</button>
+          </div>
+        ) : tickets.length === 0 ? (
+          <div
+            className="glass p-10 flex flex-col items-center gap-4 text-center"
+            style={{ border: '1px dashed var(--card-border)' }}
+          >
+            <FileText size={32} className="text-slate-600" />
+            <div>
+              <p className="text-slate-300 font-medium">No reports yet</p>
+              <p className="text-slate-500 text-sm mt-1">
+                Your submitted reports will appear here so you can track their progress.
+              </p>
+            </div>
+            <Link to="/report" className="btn-primary text-sm px-5 py-2.5">
+              Submit Your First Report
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {tickets.map((t) => {
+              const cat = CATEGORY_MAP[t.category] || { label: t.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)' }
+              return (
+                <div
+                  key={t.id}
+                  className="glass p-5 flex flex-col gap-3 cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+                  style={{ border: '1px solid var(--card-border)' }}
+                  onClick={() => navigate(`/track/${t.id}`)}
+                >
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-semibold text-indigo-400">Report #{t.id}</span>
+                      <p className="text-sm font-medium text-slate-100 truncate">{t.title}</p>
+                    </div>
+                    <StatusBadge status={t.status} size="sm" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <span
+                      className="badge border text-xs px-2 py-0.5"
+                      style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+                    >
+                      {cat.label}
+                    </span>
+                    {t.location_description && (
+                      <span className="flex items-center gap-1">
+                        <MapPin size={10} /> {t.location_description}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <Clock size={10} /> {formatDate(t.created_at)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Search form (shown when not logged in, or as secondary on My Reports) ──
+
+function TrackSearchForm({ compact = false }) {
   const [id, setId] = useState('')
   const navigate = useNavigate()
+  const { isAuthenticated } = useCitizenAuth()
 
   const handleSearch = (e) => {
     e.preventDefault()
     const trimmed = id.trim()
     if (trimmed) navigate(`/track/${trimmed}`)
+  }
+
+  if (compact) {
+    return (
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <input
+          type="text"
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="Track a specific report by ID…"
+          className="form-input flex-1 text-sm py-2"
+        />
+        <button type="submit" className="btn-secondary px-4 py-2 text-sm shrink-0 gap-1.5">
+          <Search size={13} />
+          Track
+        </button>
+      </form>
+    )
   }
 
   return (
@@ -123,7 +222,9 @@ function TrackSearchForm() {
 
         <div>
           <h1 className="text-3xl font-extrabold text-slate-100">Track Your Report</h1>
-          <p className="mt-2 text-slate-400">Enter your report ID to check the current status and crew assignment.</p>
+          <p className="mt-2 text-slate-400">
+            Enter your report ID to check the current status and crew assignment.
+          </p>
         </div>
 
         <form onSubmit={handleSearch} className="w-full flex gap-2">
@@ -131,7 +232,7 @@ function TrackSearchForm() {
             type="text"
             value={id}
             onChange={(e) => setId(e.target.value)}
-            placeholder="e.g. 3 or DEMO-4821"
+            placeholder="Enter your report ID (e.g. 42)"
             className="form-input flex-1"
             autoFocus
           />
@@ -140,34 +241,55 @@ function TrackSearchForm() {
           </button>
         </form>
 
+        {!isAuthenticated && (
+          <div
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}
+          >
+            <LogIn size={15} className="text-indigo-400 shrink-0" />
+            <p className="text-sm text-slate-300 text-left">
+              <Link to="/login" className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300 font-medium">
+                Sign in
+              </Link>{' '}
+              to see all your submitted reports in one place.
+            </p>
+          </div>
+        )}
+
         <p className="text-xs text-slate-500">
-          Your report ID was shown on the submission confirmation page. Try IDs 1–6 to see demo data.
+          Your report ID was shown on the submission confirmation page.
         </p>
       </div>
     </div>
   )
 }
 
-// Full tracker shown when an ID is provided
+// ── Ticket detail tracker ──────────────────────────────────────────────────
+
 function TicketTracker({ id }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [ticket, setTicket] = useState(null)
+  const [notFound, setNotFound] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  const load = (isRefresh = false) => {
+  const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
-
-    setTimeout(() => {
-      const found = MOCK_TICKETS[id] || null
-      setTicket(found)
+    setNotFound(false)
+    try {
+      const res = await requestsApi.get(id)
+      setTicket(res.data)
+    } catch (err) {
+      if (err?.response?.status === 404) setNotFound(true)
+      else setNotFound(true) // treat any error as not found for public users
+    } finally {
       setLoading(false)
       setRefreshing(false)
-    }, isRefresh ? 800 : 1000)
-  }
+    }
+  }, [id])
 
-  useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [load])
 
   if (loading) {
     return (
@@ -183,9 +305,7 @@ function TicketTracker({ id }) {
     )
   }
 
-  // Unknown ticket
-  if (!ticket) {
-    const isDemo = id.startsWith('DEMO-')
+  if (notFound || !ticket) {
     return (
       <div className="section-container py-20">
         <div className="max-w-lg mx-auto flex flex-col items-center gap-6 text-center animate-slide-up">
@@ -198,9 +318,7 @@ function TicketTracker({ id }) {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-100">Report #{id}</h1>
             <p className="mt-2 text-slate-400">
-              {isDemo
-                ? 'Your report has been received and is currently being processed by the AI triage system. Check back shortly.'
-                : 'We couldn\'t find a report with this ID. Please double-check and try again.'}
+              We couldn't find a report with this ID. Please double-check and try again.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
@@ -216,9 +334,10 @@ function TicketTracker({ id }) {
     )
   }
 
-  const cat = CATEGORY_MAP[ticket.category] || { label: ticket.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)', icon: 'HelpCircle' }
-  const statusStyle = STATUS_STYLE[ticket.status] || STATUS_STYLE.pending
-  const priorityStyle = PRIORITY_STYLE[ticket.ai?.priority] || PRIORITY_STYLE.Low
+  const cat = CATEGORY_MAP[ticket.category] || { label: ticket.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)' }
+  const priority = PRIORITY_MAP[ticket.category] || PRIORITY_MAP.other
+  const crew = MOCK_CREWS.find((c) => c.id === ticket.assigned_crew)
+  const reasoning = REASONING_MAP[ticket.category] || REASONING_MAP.other
 
   return (
     <div className="section-container py-10 animate-fade-in">
@@ -227,7 +346,7 @@ function TicketTracker({ id }) {
         {/* Back + refresh */}
         <div className="flex items-center justify-between">
           <button onClick={() => navigate('/track')} className="btn-ghost flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200">
-            <ArrowLeft size={14} /> All Reports
+            <ArrowLeft size={14} /> My Reports
           </button>
           <button
             onClick={() => load(true)}
@@ -243,33 +362,30 @@ function TicketTracker({ id }) {
         <div className="glass p-5 flex flex-col gap-3 animate-slide-up">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-indigo-400">Report #{id}</span>
+              <span className="text-xs font-semibold text-indigo-400">Report #{ticket.id}</span>
               <h1 className="text-lg font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>
                 {ticket.title}
               </h1>
             </div>
-            <span
-              className="badge border text-xs px-3 py-1 shrink-0"
-              style={{ color: statusStyle.color, background: statusStyle.bg, borderColor: statusStyle.color + '40' }}
-            >
-              {statusStyle.label}
-            </span>
+            <StatusBadge status={ticket.status} />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-            {ticket.location && (
+            {ticket.location_description && (
               <span className="flex items-center gap-1">
-                <MapPin size={11} className="shrink-0" /> {ticket.location}
+                <MapPin size={11} className="shrink-0" /> {ticket.location_description}
               </span>
             )}
             <span className="flex items-center gap-1">
-              <Clock size={11} className="shrink-0" /> Submitted {formatDate(ticket.submitted)}
+              <Clock size={11} className="shrink-0" /> Submitted {formatDate(ticket.created_at)}
             </span>
-            {ticket.reporter && (
-              <span className="flex items-center gap-1">
-                <User size={11} className="shrink-0" /> {ticket.reporter}
-              </span>
-            )}
           </div>
+          {/* Category badge */}
+          <span
+            className="badge border text-xs px-2.5 py-1 self-start"
+            style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+          >
+            {cat.label}
+          </span>
         </div>
 
         {/* Status timeline */}
@@ -319,8 +435,8 @@ function TicketTracker({ id }) {
           </div>
         </div>
 
-        {/* Crew assignment */}
-        {ticket.crew ? (
+        {/* Crew assignment — uses real assigned_crew from backend */}
+        {crew ? (
           <div
             className="glass p-5 flex flex-col gap-3 animate-slide-up"
             style={{ border: '1px solid rgba(16,185,129,0.2)' }}
@@ -332,18 +448,12 @@ function TicketTracker({ id }) {
             <div className="flex flex-wrap gap-4">
               <div>
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Team</p>
-                <p className="text-sm font-semibold text-slate-100">{ticket.crew.name}</p>
+                <p className="text-sm font-semibold text-slate-100">{crew.label}</p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Specialty</p>
-                <p className="text-sm text-slate-300">{ticket.crew.specialty}</p>
+                <p className="text-sm text-slate-300">{crew.specialty}</p>
               </div>
-              {ticket.crew.eta && (
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Estimated Arrival</p>
-                  <p className="text-sm font-semibold" style={{ color: '#10b981' }}>{ticket.crew.eta}</p>
-                </div>
-              )}
             </div>
           </div>
         ) : (
@@ -353,48 +463,60 @@ function TicketTracker({ id }) {
           >
             <Clock size={16} className="text-amber-400 shrink-0" />
             <p className="text-sm text-slate-400">
-              Your report is currently in the AI triage queue. A crew will be assigned shortly.
+              Your report is in the AI triage queue. A crew will be assigned shortly.
             </p>
           </div>
         )}
 
-        {/* AI triage result */}
-        {ticket.ai && (
+        {/* Escalation banner */}
+        {ticket.escalated && (
           <div
-            className="glass p-5 flex flex-col gap-4 animate-slide-up"
-            style={{ border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.04)' }}
+            className="glass p-4 flex items-start gap-3 animate-slide-up"
+            style={{ border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.06)' }}
           >
-            <div className="flex items-center gap-2">
-              <Sparkles size={13} className="text-indigo-400" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">AI Triage Summary</span>
+            <span className="text-amber-400 font-bold text-sm shrink-0">⚠</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-300">
+                Escalated{ticket.escalation_level ? ` to ${ticket.escalation_level.replace('_', ' ')}` : ''}
+              </p>
+              {ticket.escalation_note && (
+                <p className="text-xs text-slate-400 mt-1">{ticket.escalation_note}</p>
+              )}
             </div>
-            <div className="flex flex-wrap gap-5">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Category</p>
-                <span
-                  className="badge border text-xs px-2.5 py-1"
-                  style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
-                >
-                  {cat.label}
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Priority</p>
-                <span
-                  className="badge border text-xs px-2.5 py-1"
-                  style={{ color: priorityStyle.color, background: priorityStyle.bg, borderColor: priorityStyle.color + '40' }}
-                >
-                  {ticket.ai.priority}
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Confidence</p>
-                <span className="text-sm font-bold" style={{ color: priorityStyle.color }}>{ticket.ai.confidence}%</span>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">{ticket.ai.reasoning}</p>
           </div>
         )}
+
+        {/* AI triage summary */}
+        <div
+          className="glass p-5 flex flex-col gap-4 animate-slide-up"
+          style={{ border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.04)' }}
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles size={13} className="text-indigo-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">AI Triage Summary</span>
+          </div>
+          <div className="flex flex-wrap gap-5">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Category</p>
+              <span
+                className="badge border text-xs px-2.5 py-1"
+                style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+              >
+                {cat.label}
+              </span>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Priority</p>
+              <span
+                className="badge border text-xs px-2.5 py-1"
+                style={{ color: priority.color, background: priority.bg, borderColor: priority.color + '40' }}
+              >
+                {priority.label}
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">{reasoning}</p>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Link to="/requests" className="btn-secondary flex-1 py-2.5 text-center text-sm">
@@ -409,7 +531,13 @@ function TicketTracker({ id }) {
   )
 }
 
+// ── Page root ─────────────────────────────────────────────────────────────
+
 export default function TrackIssuePage() {
   const { id } = useParams()
-  return id ? <TicketTracker id={id} /> : <TrackSearchForm />
+  const { isAuthenticated } = useCitizenAuth()
+
+  if (id) return <TicketTracker id={id} />
+  if (isAuthenticated) return <MyTicketsList />
+  return <TrackSearchForm />
 }
