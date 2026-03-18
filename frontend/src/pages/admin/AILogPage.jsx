@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle, RefreshCw, Filter, TrendingUp, Zap } from 'lucide-react'
+import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { CATEGORY_MAP, MOCK_CREWS } from '../../utils/constants'
 import { requestsApi } from '../../api/client'
@@ -236,7 +236,7 @@ export default function AILogPage() {
   const loadLog = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await requestsApi.list({ page_size: 8 })
+      const res = await requestsApi.list({ page_size: 999 })
       const tickets = Array.isArray(res.data) ? res.data : (res.data.results || [])
       setAiLog(tickets.map((t, i) => generateAIEntry(t, i)))
       setUsedMock(false)
@@ -325,39 +325,60 @@ export default function AILogPage() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters — click a pill to activate, click again (or the ✕) to clear */}
       <div className="flex flex-wrap items-center gap-2">
         <Filter size={13} className="text-slate-500 shrink-0" />
-        {['all', 'success', 'escalated'].map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s === statusFilter ? 'all' : s)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 capitalize ${
-              statusFilter === s
-                ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
-                : 'border-white/10 text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            {s === 'all' ? 'All statuses' : s}
-          </button>
-        ))}
-        <div className="w-px h-4 bg-white/10 mx-1" />
-        {categories.map((c) => {
-          const cat = CATEGORY_MAP[c]
+
+        {/* Status pills — only non-"all" options; active pill shows ✕ */}
+        {['success', 'escalated'].map((s) => {
+          const active = statusFilter === s
           return (
             <button
-              key={c}
-              onClick={() => setCategoryFilter(c === categoryFilter ? 'all' : c)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
-                categoryFilter === c
+              key={s}
+              onClick={() => setStatusFilter(active ? 'all' : s)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 capitalize flex items-center gap-1.5 ${
+                active
                   ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
                   : 'border-white/10 text-slate-500 hover:text-slate-300'
               }`}
             >
-              {c === 'all' ? 'All categories' : cat?.label || c}
+              {s}
+              {active && <X size={10} />}
             </button>
           )
         })}
+
+        <div className="w-px h-4 bg-white/10 mx-1" />
+
+        {/* Category pills — derived from current log; active pill shows ✕ */}
+        {categories.filter((c) => c !== 'all').map((c) => {
+          const cat = CATEGORY_MAP[c]
+          const active = categoryFilter === c
+          return (
+            <button
+              key={c}
+              onClick={() => setCategoryFilter(active ? 'all' : c)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 flex items-center gap-1.5 ${
+                active
+                  ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
+                  : 'border-white/10 text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {cat?.label || c}
+              {active && <X size={10} />}
+            </button>
+          )
+        })}
+
+        {/* Clear all — only shown when a filter is active */}
+        {(statusFilter !== 'all' || categoryFilter !== 'all') && (
+          <button
+            onClick={() => { setStatusFilter('all'); setCategoryFilter('all') }}
+            className="text-xs text-slate-500 hover:text-red-400 transition-colors ml-1 underline underline-offset-2"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {/* Info banner */}
