@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import ReportIssuePage from './pages/ReportIssuePage'
 import ViewRequestsPage from './pages/ViewRequestsPage'
+import TrackIssuePage from './pages/TrackIssuePage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
@@ -31,6 +32,8 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="report" element={<ReportIssuePage />} />
             <Route path="requests" element={<ViewRequestsPage />} />
+            <Route path="track" element={<TrackIssuePage />} />
+            <Route path="track/:id" element={<TrackIssuePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
 

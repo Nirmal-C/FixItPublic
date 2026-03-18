@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle, RefreshCw, Filter, TrendingUp, Zap } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { CATEGORY_MAP } from '../../utils/constants'
 
@@ -192,17 +192,111 @@ function AILogEntry({ entry }) {
 }
 
 export default function AILogPage() {
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'success' | 'escalated'
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    setTimeout(() => setRefreshing(false), 1200)
+  }
+
+  // Derive available categories from the log entries
+  const categories = useMemo(() => {
+    const seen = new Set(MOCK_AI_LOG.map((e) => e.category))
+    return ['all', ...seen]
+  }, [])
+
+  const filtered = useMemo(() => MOCK_AI_LOG.filter((e) => {
+    if (statusFilter !== 'all' && e.status !== statusFilter) return false
+    if (categoryFilter !== 'all' && e.category !== categoryFilter) return false
+    return true
+  }), [statusFilter, categoryFilter])
+
+  // Summary stats
+  const total = MOCK_AI_LOG.length
+  const successes = MOCK_AI_LOG.filter((e) => e.status === 'success').length
+  const avgConfidence = Math.round(MOCK_AI_LOG.reduce((s, e) => s + e.confidence, 0) / total * 100)
+  const successRate = Math.round((successes / total) * 100)
+
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-3xl">
 
       {/* Page header */}
-      <div>
-        <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-          AI Reasoning Log
-        </h2>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Decisions made by the agentic AI for each incoming ticket
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+            AI Reasoning Log
+          </h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Decisions made by the agentic AI for each incoming ticket
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="btn-secondary flex items-center gap-2 text-xs px-3 py-2 shrink-0"
+        >
+          <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Syncing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Total Decisions', value: total, icon: BrainCircuit, color: '#6366f1' },
+          { label: 'Success Rate',    value: `${successRate}%`, icon: TrendingUp, color: '#10b981' },
+          { label: 'Avg Confidence',  value: `${avgConfidence}%`, icon: Zap, color: '#f59e0b' },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div
+            key={label}
+            className="glass p-4 flex flex-col gap-2"
+            style={{ border: `1px solid ${color}20` }}
+          >
+            <div className="flex items-center gap-2">
+              <Icon size={13} style={{ color }} />
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
+            </div>
+            <span className="text-2xl font-extrabold" style={{ color }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter size={13} className="text-slate-500 shrink-0" />
+        {/* Status filter */}
+        {['all', 'success', 'escalated'].map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 capitalize ${
+              statusFilter === s
+                ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
+                : 'border-white/10 text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {s === 'all' ? 'All statuses' : s}
+          </button>
+        ))}
+        <div className="w-px h-4 bg-white/10 mx-1" />
+        {/* Category filter */}
+        {categories.map((c) => {
+          const cat = CATEGORY_MAP[c]
+          return (
+            <button
+              key={c}
+              onClick={() => setCategoryFilter(c)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
+                categoryFilter === c
+                  ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
+                  : 'border-white/10 text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {c === 'all' ? 'All categories' : cat?.label || c}
+            </button>
+          )
+        })}
       </div>
 
       {/* Info banner */}
@@ -221,11 +315,28 @@ export default function AILogPage() {
       </div>
 
       {/* AI log entries */}
-      <div className="flex flex-col gap-4">
-        {MOCK_AI_LOG.map((entry) => (
-          <AILogEntry key={entry.id} entry={entry} />
-        ))}
-      </div>
+      {filtered.length === 0 ? (
+        <div
+          className="flex flex-col items-center gap-3 py-16 rounded-2xl text-center"
+          style={{ border: '1px dashed var(--card-border)' }}
+        >
+          <BrainCircuit size={32} className="text-slate-600" />
+          <p className="text-sm text-slate-500">No entries match the selected filters.</p>
+          <button
+            onClick={() => { setStatusFilter('all'); setCategoryFilter('all') }}
+            className="btn-ghost text-xs text-indigo-400 hover:text-indigo-300"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-slate-600">{filtered.length} of {total} entries</p>
+          {filtered.map((entry) => (
+            <AILogEntry key={entry.id} entry={entry} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
