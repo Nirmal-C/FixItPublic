@@ -70,19 +70,30 @@ def serve_photo(request, path):
     fetches the blob, and streams the bytes back to the browser.
     The Azure container stays private at all times.
     """
-    ticket = MaintenanceTicket.objects.filter(
-        Q(photo=path) | Q(photo2=path) | Q(photo3=path) | Q(photo4=path) | Q(photo5=path)
-    ).first()
+    # Try the full multi-field query first. If migration 0006 hasn't been
+    # applied yet (photo2–photo5 columns don't exist), fall back to the
+    # original single-field query so existing photos keep working.
+    try:
+        ticket = MaintenanceTicket.objects.filter(
+            Q(photo=path) | Q(photo2=path) | Q(photo3=path) | Q(photo4=path) | Q(photo5=path)
+        ).first()
+    except Exception:
+        ticket = MaintenanceTicket.objects.filter(photo=path).first()
+
     if not ticket:
         return Response({'detail': 'Not found.'}, status=404)
 
-    # Find which field actually holds this path
+    # Find which of the five fields actually holds this path.
+    # Fall back gracefully if extra columns don't exist yet.
     photo_field = None
     for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
-        field = getattr(ticket, field_name)
-        if field and field.name == path:
-            photo_field = field
-            break
+        try:
+            field = getattr(ticket, field_name)
+            if field and field.name == path:
+                photo_field = field
+                break
+        except Exception:
+            continue
     if not photo_field:
         return Response({'detail': 'Not found.'}, status=404)
 
