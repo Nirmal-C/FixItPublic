@@ -8,6 +8,18 @@ import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
 import { STATUSES, CATEGORY_MAP, MOCK_CREWS } from '../../utils/constants'
 
+// Proxy all images through Django — never call Azure directly (private container).
+// Accepts either a relative path ("tickets/2026/03/photo.jpg") or a full Azure
+// URL (legacy), and returns the Django proxy URL in both cases.
+function photoUrl(photo) {
+  if (!photo) return null
+  if (photo.startsWith('http')) {
+    const match = photo.match(/maintenance-photos\/(.+?)(\?|$)/)
+    return match ? `/api/photos/${match[1]}/` : null
+  }
+  return `/api/photos/${photo}/`
+}
+
 const MOCK_ISSUES = [
   {
     id: 1, title: 'Broken streetlight on Queen St near No. 42',
@@ -154,7 +166,7 @@ export default function TicketsPage() {
       t.created_at ? new Date(t.created_at).toLocaleDateString('en-NZ') : '',
     ])
     const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}`).join(','))
       .join('\n')
 
     // Create a temporary anchor element and click it to trigger the browser's
@@ -402,10 +414,12 @@ export default function TicketsPage() {
                   </div>
                 </div>
 
-                {/* Photo */}
+                {/* Photo — proxied through Django so the private Azure container is never
+                    called directly from the browser. photoUrl() converts the stored relative
+                    path into /api/photos/<path>/ which Django fetches with a fresh SAS token. */}
                 {selectedTicket.photo ? (
                   <img
-                    src={selectedTicket.photo}
+                    src={photoUrl(selectedTicket.photo)}
                     alt="Report photo"
                     className="w-full rounded-xl object-cover max-h-40"
                   />
@@ -426,10 +440,10 @@ export default function TicketsPage() {
                   // Each step in the ticket lifecycle in chronological order.
                   // A step is "done" once the ticket has passed through (or is at) that stage.
                   const STEPS = [
-                    { key: 'reported',    label: 'Reported',   doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
-                    { key: 'assigned',    label: 'Assigned',   doneIf: ['in_progress', 'resolved', 'closed'] },
-                    { key: 'in_progress', label: 'In Progress',doneIf: ['in_progress', 'resolved', 'closed'] },
-                    { key: 'resolved',    label: 'Resolved',   doneIf: ['resolved', 'closed'] },
+                    { key: 'reported',    label: 'Reported',    doneIf: ['pending', 'in_progress', 'resolved', 'closed'] },
+                    { key: 'assigned',    label: 'Assigned',    doneIf: ['in_progress', 'resolved', 'closed'] },
+                    { key: 'in_progress', label: 'In Progress', doneIf: ['in_progress', 'resolved', 'closed'] },
+                    { key: 'resolved',    label: 'Resolved',    doneIf: ['resolved', 'closed'] },
                   ]
                   return (
                     <div className="pt-1">
