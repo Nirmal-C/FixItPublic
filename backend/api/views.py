@@ -11,11 +11,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
-from .models import MaintenanceTicket
+from django.utils import timezone
+from .models import MaintenanceTicket, CATEGORY_CREW_MAP
 from .serializers import (
     RegisterSerializer, UserProfileSerializer,
     AdminUserSerializer, CreateAdminSerializer,
-    TicketListSerializer, TicketDetailSerializer, TicketStatusSerializer,
+    TicketListSerializer, TicketDetailSerializer,
+    TicketStatusSerializer, TicketAssignSerializer,
 )
 from .permissions import IsCouncilAdmin, IsSuperuser
 
@@ -68,12 +70,38 @@ def serve_photo(request, path):
     fetches the blob, and streams the bytes back to the browser.
     The Azure container stays private at all times.
     """
-    ticket = MaintenanceTicket.objects.filter(photo=path).first()
-    if not ticket or not ticket.photo:
+    # Try the full multi-field query first. If migration 0006 hasn't been
+    # applied yet (photo2–photo5 columns don't exist), fall back to the
+    # original single-field query so existing photos keep working.
+    try:
+        ticket = MaintenanceTicket.objects.filter(
+            Q(photo=path) | Q(photo2=path) | Q(photo3=path) | Q(photo4=path) | Q(photo5=path)
+        ).first()
+    except Exception:
+        ticket = MaintenanceTicket.objects.filter(photo=path).first()
+
+    if not ticket:
         return Response({'detail': 'Not found.'}, status=404)
 
-    sas_url = ticket.photo.url
-    resp = http_requests.get(sas_url, timeout=10)
+    # Find which of the five fields actually holds this path.
+    # Fall back gracefully if extra columns don't exist yet.
+    photo_field = None
+    for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
+        try:
+            field = getattr(ticket, field_name)
+            if field and field.name == path:
+                photo_field = field
+                break
+        except Exception:
+            continue
+    if not photo_field:
+        return Response({'detail': 'Not found.'}, status=404)
+
+    sas_url = photo_field.url
+    try:
+        resp = http_requests.get(sas_url, timeout=10)
+    except Exception:
+        return Response({'detail': 'Could not retrieve photo.'}, status=502)
     if resp.status_code != 200:
         return Response({'detail': 'Could not retrieve photo.'}, status=502)
 
@@ -189,6 +217,12 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
         return qs
 
+    def perform_create(self, serializer):
+        """Auto-assign crew based on category when a ticket is first created."""
+        category = self.request.data.get('category', 'other')
+        auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
+        serializer.save(assigned_crew=auto_crew)
+
 
 class TicketDetailView(generics.RetrieveAPIView):
     queryset           = MaintenanceTicket.objects.all()
@@ -201,6 +235,33 @@ class TicketStatusUpdateView(generics.UpdateAPIView):
     serializer_class   = TicketStatusSerializer
     permission_classes = [IsCouncilAdmin]
     http_method_names  = ['patch']
+
+
+class TicketAssignView(generics.UpdateAPIView):
+    """
+    PATCH /api/requests/<id>/assign/
+    Admin can update crew assignment and/or escalate a ticket.
+    When escalating, records who escalated and when.
+    """
+    queryset           = MaintenanceTicket.objects.all()
+    serializer_class   = TicketAssignSerializer
+    permission_classes = [IsCouncilAdmin]
+    http_method_names  = ['patch']
+
+    def perform_update(self, serializer):
+        data = serializer.validated_data
+        extra = {}
+        # If escalation is being set to True, stamp who escalated and when
+        if data.get('escalated') and not serializer.instance.escalated:
+            extra['escalated_at'] = timezone.now()
+            extra['escalated_by'] = self.request.user
+        # If escalation is being cleared, wipe the escalation metadata
+        elif not data.get('escalated', True):
+            extra['escalated_at']     = None
+            extra['escalated_by']     = None
+            extra['escalation_level'] = ''
+            extra['escalation_note']  = ''
+        serializer.save(**extra)
 
 
 class MyTicketsView(generics.ListAPIView):

@@ -1,4 +1,6 @@
-import { MapPin, Calendar, User } from 'lucide-react'
+import { useState } from 'react'
+import { MapPin, Calendar, User, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import StatusBadge from './StatusBadge'
 import { CATEGORY_MAP } from '../utils/constants'
 import * as LucideIcons from 'lucide-react'
@@ -63,15 +65,11 @@ function LocationTooltip({ location, color }) {
   )
 }
 
-export default function IssueCard({ issue, compact = false }) {
-  const cat = CATEGORY_MAP[issue.category] || {
-    label: issue.category,
-    color: '#8BA8C4',
-    bgColor: 'rgba(139,168,196,0.10)',
-    icon: 'HelpCircle',
-  }
-  const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
-  const photo = photoUrl(issue.photo)
+/* Photo slider used in the grid card when a ticket has multiple photos */
+function PhotoSlider({ photos, title }) {
+  const [idx, setIdx] = useState(0)
+  const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i - 1 + photos.length) % photos.length) }
+  const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i + 1) % photos.length) }
 
   /* ── Compact horizontal row (list view) ───────────────────────── */
   if (compact) {
@@ -131,25 +129,153 @@ export default function IssueCard({ issue, compact = false }) {
 
   /* ── Standard vertical card (grid / map sidebar view) ─────────── */
   return (
+    <div className="relative w-full h-36 rounded overflow-hidden shrink-0">
+      <img
+        src={photos[idx]}
+        alt={`${title} — photo ${idx + 1}`}
+        className="w-full h-full object-cover transition-opacity duration-300"
+      />
+
+      {photos.length > 1 && (
+        <>
+          {/* Prev / Next */}
+          <button
+            onClick={prev}
+            className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+          >
+            <ChevronLeft size={14} className="text-white" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+          >
+            <ChevronRight size={14} className="text-white" />
+          </button>
+
+          {/* Dots */}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+            {photos.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIdx(i) }}
+                className="w-1.5 h-1.5 rounded-full transition-all"
+                style={{ background: i === idx ? '#fff' : 'rgba(255,255,255,0.45)' }}
+              />
+            ))}
+          </div>
+
+          {/* Counter badge */}
+          <span
+            className="absolute top-1.5 right-1.5 text-white text-xs px-1.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(0,0,0,0.55)', fontSize: '10px' }}
+          >
+            {idx + 1}/{photos.length}
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function IssueCard({ issue, compact = false }) {
+  const cat = CATEGORY_MAP[issue.category] || {
+    label: issue.category,
+    color: '#8BA8C4',
+    bgColor: 'rgba(139,168,196,0.10)',
+    icon: 'HelpCircle',
+  }
+  const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
+
+  // Collect all up to 5 photo fields
+  const photos = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+    .map((k) => photoUrl(issue[k]))
+    .filter(Boolean)
+
+  /* ── Compact horizontal row (list view) ───────────────────────── */
+  if (compact) {
+    return (
+      <article className="gov-row flex items-center gap-4 py-3 px-4">
+
+        {/* Category icon square */}
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: cat.bgColor }}
+        >
+          <CatIcon size={16} style={{ color: cat.color }} />
+        </div>
+
+        {/* Middle: title + meta */}
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3
+              className="text-sm font-semibold truncate"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {issue.title}
+            </h3>
+            <span
+              className="badge border text-xs shrink-0"
+              style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
+            >
+              <CatIcon size={10} />
+              {cat.label}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--text-muted)' }}>
+            {issue.location_description && (
+              <LocationTooltip location={issue.location_description} color={cat.color} />
+            )}
+            <span className="flex items-center gap-1">
+              <User size={10} />
+              {issue.reporter_name || 'Anonymous'}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: status + date + ID + track */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <StatusBadge status={issue.status || 'pending'} size="sm" />
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <Calendar size={10} />
+              {formatDate(issue.created_at)}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{issue.id}</span>
+          </div>
+          <Link
+            to={`/track/${issue.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-xs transition-colors"
+            style={{ color: 'var(--accent)' }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Track <ArrowRight size={10} />
+          </Link>
+        </div>
+      </article>
+    )
+  }
+
+  /* ── Standard vertical card (grid / map sidebar view) ─────────── */
+  return (
     <article className="issue-card group relative hover:z-[60]" style={{ overflow: 'visible' }}>
-      {/* Photo / icon thumbnail */}
-      <div
-        className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
-        style={{ background: cat.bgColor }}
-      >
-        {photo ? (
-          <img
-            src={photo}
-            alt={issue.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
+      {/* Photo slider or icon placeholder */}
+      {photos.length > 0 ? (
+        <PhotoSlider photos={photos} title={issue.title} />
+      ) : (
+        <div
+          className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ background: cat.bgColor }}
+        >
           <div className="flex flex-col items-center gap-2 opacity-40">
             <CatIcon size={28} style={{ color: cat.color }} />
             <span className="text-xs" style={{ color: cat.color }}>No photo</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex flex-col gap-3 flex-1">
@@ -233,6 +359,16 @@ export default function IssueCard({ issue, compact = false }) {
               Anonymous
             </span>
           )}
+          <Link
+            to={`/track/${issue.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 ml-auto font-medium transition-opacity"
+            style={{ color: 'var(--accent)', fontSize: '11px' }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Track <ArrowRight size={10} />
+          </Link>
         </div>
       </div>
     </article>

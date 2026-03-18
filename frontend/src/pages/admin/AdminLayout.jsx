@@ -118,7 +118,9 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex flex-col min-h-screen transition-all duration-300" style={{ marginLeft: `${W}px` }}>
+      <div
+        className={`flex flex-col min-h-screen transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
+      >
         <header className="sticky top-0 z-20 flex items-center justify-between px-6 h-14 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="btn-ghost p-2 md:hidden"><Menu size={20} /></button>
@@ -139,7 +141,7 @@ export default function AdminLayout() {
           </button>
         </header>
 
-        <main className="flex-1 p-6 animate-fade-in">
+        <main className="flex-1 p-3 sm:p-6">
           <Outlet />
         </main>
       </div>

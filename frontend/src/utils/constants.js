@@ -116,6 +116,7 @@ export const NAV_LINKS = [
   { label: 'Home', path: '/' },
   { label: 'Report Issue', path: '/report' },
   { label: 'View Requests', path: '/requests' },
+  { label: 'Track Report', path: '/track' },
 ]
 
 export const PAGE_SIZE = 9

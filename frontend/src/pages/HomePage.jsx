@@ -4,10 +4,11 @@ import {
   Construction, ArrowRight, Building2,
   ShieldCheck, MapPin, Bell, Users, Clock,
   CheckCircle2, Search, AlertCircle, Loader2,
-  ChevronRight, FileText, Phone, Zap,
+  ChevronRight, FileText, Phone, Zap, LogIn,
 } from 'lucide-react'
 import { requestsApi } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
+import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 
 // Mock data for ticket lookup when the backend isn't available
 const MOCK_LOOKUP = {
@@ -170,8 +171,10 @@ function SectionLabel({ en, mi, heading }) {
 }
 
 export default function HomePage() {
+  const { user } = useCitizenAuth()
+
   return (
-    <div className="animate-fade-in">
+    <div>
 
       {/* Hero */}
       <section style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>
@@ -218,6 +221,18 @@ export default function HomePage() {
                 <Link to="/requests" className="btn-secondary px-7 py-3 text-sm">
                   Browse Reports
                 </Link>
+                {!user && (
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded font-semibold text-sm transition-all duration-150"
+                    style={{ border: '1px solid var(--card-border)', color: 'var(--text-secondary)', background: 'transparent' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#818cf8' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--card-border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    <LogIn size={14} />
+                    Sign In
+                  </Link>
+                )}
               </div>
 
               {/* Quick stats strip at the bottom of the hero */}

@@ -14,8 +14,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = User
-        fields = ('username', 'email', 'password', 'password2', 'phone')
-        extra_kwargs = {'phone': {'required': False}}
+        fields = ('username', 'email', 'password', 'password2', 'first_name', 'phone')
+        extra_kwargs = {'phone': {'required': False}, 'first_name': {'required': False}}
 
     def validate(self, attrs):
         if attrs['password'] != attrs.pop('password2'):
@@ -27,6 +27,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
             phone=validated_data.get('phone', ''),
             role=User.Role.CITIZEN,
         )
@@ -88,11 +89,7 @@ class TicketListSerializer(serializers.ModelSerializer):
       IssueCard / ViewRequestsPage : id, title, category, status, description,
                                      location_description, reporter_name,
                                      created_at, photo, lat, lng
-      DashboardPage / TicketsPage  : all of the above + updated_at
-
-    reporter_name is derived: the linked user's username takes priority,
-    then the anonymous name submitted with the form; None is returned
-    (not an empty string) so the frontend's `|| 'Anonymous'` fallback works.
+      DashboardPage / TicketsPage  : all of the above + updated_at + crew/escalation
     """
     reporter_name = serializers.SerializerMethodField()
 
@@ -101,8 +98,10 @@ class TicketListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'category', 'status',
             'description', 'location_description',
-            'reporter_name', 'photo',
+            'reporter_name', 'photo', 'photo2', 'photo3', 'photo4', 'photo5',
             'lat', 'lng',
+            'assigned_crew',
+            'escalated', 'escalation_level', 'escalation_note',
             'created_at', 'updated_at',
         )
 
@@ -125,13 +124,18 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         model  = MaintenanceTicket
         fields = (
             'id', 'title', 'description', 'category', 'status',
-            'location_description', 'photo',
+            'location_description', 'photo', 'photo2', 'photo3', 'photo4', 'photo5',
             'lat', 'lng',
             'reporter_name', 'reporter_email', 'reporter_user',
             'reporter_display',
+            'assigned_crew',
+            'escalated', 'escalation_level', 'escalation_note', 'escalated_at',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'status', 'reporter_user', 'created_at', 'updated_at')
+        read_only_fields = (
+            'id', 'status', 'reporter_user', 'created_at', 'updated_at',
+            'assigned_crew', 'escalated', 'escalation_level', 'escalation_note', 'escalated_at',
+        )
 
     def get_reporter_display(self, obj):
         if obj.reporter_user:
@@ -154,3 +158,18 @@ class TicketStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model  = MaintenanceTicket
         fields = ('id', 'status')
+
+
+class TicketAssignSerializer(serializers.ModelSerializer):
+    """
+    Used by PATCH /api/requests/<id>/assign/
+    Allows admin to update crew assignment and escalation in one call.
+    """
+    class Meta:
+        model  = MaintenanceTicket
+        fields = (
+            'id', 'assigned_crew',
+            'escalated', 'escalation_level', 'escalation_note',
+            'escalated_at', 'escalated_by',
+        )
+        read_only_fields = ('id', 'escalated_at', 'escalated_by')
