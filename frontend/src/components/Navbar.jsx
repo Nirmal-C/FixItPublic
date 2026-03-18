@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown, Bell, BellOff } from 'lucide-react'
 import { NAV_LINKS } from '../utils/constants'
 import { useTheme } from '../contexts/ThemeContext'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
@@ -9,10 +9,22 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen]   = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { theme, toggleTheme }        = useTheme()
-  const { isAuthenticated, user, logout } = useCitizenAuth()
+  const { isAuthenticated, user, logout, updateProfile } = useCitizenAuth()
   const navigate = useNavigate()
   const menuRef  = useRef(null)
   const isLight  = theme === 'light'
+  const [togglingNotif, setTogglingNotif] = useState(false)
+
+  const handleToggleNotifications = async (e) => {
+    e.stopPropagation()
+    if (togglingNotif) return
+    setTogglingNotif(true)
+    try {
+      await updateProfile({ email_notifications: !user?.email_notifications })
+    } finally {
+      setTogglingNotif(false)
+    }
+  }
 
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false) }
@@ -124,7 +136,7 @@ export default function Navbar() {
                 </button>
                 {userMenuOpen && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-44 rounded-xl py-1 z-50 animate-slide-down"
+                    className="absolute right-0 top-full mt-2 w-56 rounded-xl py-1 z-50 animate-slide-down"
                     style={{ background: '#001E3C', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
                   >
                     <Link
@@ -134,6 +146,29 @@ export default function Navbar() {
                     >
                       <AlertCircle size={13} /> My Reports
                     </Link>
+                    <button
+                      onClick={handleToggleNotifications}
+                      disabled={togglingNotif}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                    >
+                      <span className="flex items-center gap-2">
+                        {user?.email_notifications
+                          ? <Bell size={13} className="text-indigo-400" />
+                          : <BellOff size={13} />
+                        }
+                        Email updates
+                      </span>
+                      <span
+                        className="w-7 h-4 rounded-full flex items-center transition-colors duration-200 shrink-0"
+                        style={{ background: user?.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.15)', padding: '2px' }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full bg-white transition-transform duration-200"
+                          style={{ transform: user?.email_notifications ? 'translateX(12px)' : 'translateX(0)' }}
+                        />
+                      </span>
+                    </button>
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '2px 0' }} />
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors"
