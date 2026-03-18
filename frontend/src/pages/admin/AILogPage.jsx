@@ -381,23 +381,17 @@ export default function AILogPage() {
         )}
       </div>
 
-      {/* Info banner */}
-      <div
-        className="flex items-start gap-3 p-4 rounded-xl text-sm"
-        style={{ background: 'rgba(102,126,234,0.08)', border: '1px solid rgba(102,126,234,0.2)' }}
-      >
-        <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-        <div className="text-slate-300 leading-relaxed">
-          <strong className="text-slate-100">Sprint 3 preview.</strong>{' '}
-          {usedMock
-            ? 'Backend offline — showing representative demo data. '
-            : 'Showing mock AI reasoning for your most recent tickets. '}
-          Live AI decisions (Sense-Plan-Act-Reflect cycle) will appear here once the FastAPI MCP
-          server is connected in Sprint 3.
+      {usedMock && (
+        <div
+          className="flex items-start gap-3 p-4 rounded-xl text-sm"
+          style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}
+        >
+          <Info size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-slate-300">Backend offline — showing representative demo data.</p>
         </div>
-      </div>
+      )}
 
-      {/* AI log entries */}
+{/* AI log entries */}
       {loading ? (
         <div className="flex flex-col gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
