@@ -56,6 +56,9 @@ class MaintenanceTicket(models.Model):
         on_delete=models.SET_NULL,
         related_name='tickets',
     )
+    lat        = models.FloatField(null=True, blank=True, help_text='Latitude of the reported issue')
+    lng        = models.FloatField(null=True, blank=True, help_text='Longitude of the reported issue')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

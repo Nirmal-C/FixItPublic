@@ -7,3 +7,4 @@ django-storages[azure]
 azure-storage-blob
 Pillow
 whitenoise
+requests
