@@ -63,13 +63,20 @@ export const requestsApi = {
   list:         (params = {}) => apiClient.get('/api/requests/', { params }),
   get:          (id)          => apiClient.get(`/api/requests/${id}/`),
   create: (data) => {
-    const hasFile = data.photo instanceof File
-    if (hasFile) {
+    // Support multi-photo: data.photos is an array of up to 5 Files
+    const PHOTO_KEYS = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+    const photos = Array.isArray(data.photos)
+      ? data.photos.filter((p) => p instanceof File).slice(0, 5)
+      : data.photo instanceof File ? [data.photo] : []
+
+    if (photos.length > 0) {
       const formData = new FormData()
-      Object.entries(data).forEach(([key, val]) => {
+      const { photos: _p, photo: _ph, ...rest } = data
+      Object.entries(rest).forEach(([key, val]) => {
         if (val !== null && val !== undefined && val !== '')
           formData.append(key, val)
       })
+      photos.forEach((file, i) => formData.append(PHOTO_KEYS[i], file))
       return apiClient.post('/api/requests/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })

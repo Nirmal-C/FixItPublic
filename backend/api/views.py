@@ -70,12 +70,27 @@ def serve_photo(request, path):
     fetches the blob, and streams the bytes back to the browser.
     The Azure container stays private at all times.
     """
-    ticket = MaintenanceTicket.objects.filter(photo=path).first()
-    if not ticket or not ticket.photo:
+    ticket = MaintenanceTicket.objects.filter(
+        Q(photo=path) | Q(photo2=path) | Q(photo3=path) | Q(photo4=path) | Q(photo5=path)
+    ).first()
+    if not ticket:
         return Response({'detail': 'Not found.'}, status=404)
 
-    sas_url = ticket.photo.url
-    resp = http_requests.get(sas_url, timeout=10)
+    # Find which field actually holds this path
+    photo_field = None
+    for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
+        field = getattr(ticket, field_name)
+        if field and field.name == path:
+            photo_field = field
+            break
+    if not photo_field:
+        return Response({'detail': 'Not found.'}, status=404)
+
+    sas_url = photo_field.url
+    try:
+        resp = http_requests.get(sas_url, timeout=10)
+    except Exception:
+        return Response({'detail': 'Could not retrieve photo.'}, status=502)
     if resp.status_code != 200:
         return Response({'detail': 'Could not retrieve photo.'}, status=502)
 

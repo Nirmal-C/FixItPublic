@@ -75,6 +75,10 @@ class MaintenanceTicket(models.Model):
     status               = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     location_description = models.CharField(max_length=300, blank=True)
     photo                = models.ImageField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    photo2               = models.ImageField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    photo3               = models.ImageField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    photo4               = models.ImageField(upload_to='tickets/%Y/%m/', blank=True, null=True)
+    photo5               = models.ImageField(upload_to='tickets/%Y/%m/', blank=True, null=True)
     reporter_name        = models.CharField(max_length=100, blank=True)
     reporter_email       = models.EmailField(blank=True)
     reporter_user        = models.ForeignKey(
