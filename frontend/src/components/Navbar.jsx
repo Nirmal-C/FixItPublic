@@ -1,13 +1,26 @@
-import { useState } from 'react'
-import { NavLink, Link } from 'react-router-dom'
-import { Menu, X, Sun, Moon, Building2, AlertCircle } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown } from 'lucide-react'
 import { NAV_LINKS } from '../utils/constants'
 import { useTheme } from '../contexts/ThemeContext'
+import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 
 export default function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const { theme, toggleTheme } = useTheme()
-  const isLight = theme === 'light'
+  const [mobileOpen, setMobileOpen]   = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const { theme, toggleTheme }        = useTheme()
+  const { isAuthenticated, user, logout } = useCitizenAuth()
+  const navigate = useNavigate()
+  const menuRef  = useRef(null)
+  const isLight  = theme === 'light'
+
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleLogout = () => { logout(); setUserMenuOpen(false); navigate('/') }
 
   // Active link: gold text + gold bottom border; inactive: muted white
   const navLinkClass = ({ isActive }) =>
@@ -97,7 +110,52 @@ export default function Navbar() {
               View Reports
             </Link>
 
-            {/* Primary CTA — government gold */}
+            {/* Auth — Sign In or user menu */}
+            {isAuthenticated ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-150"
+                  style={{ color: 'rgba(255,255,255,0.75)', background: userMenuOpen ? 'rgba(255,255,255,0.08)' : 'transparent' }}
+                >
+                  <UserCircle size={15} />
+                  {user?.username || 'Account'}
+                  <ChevronDown size={12} style={{ transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+                {userMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-44 rounded-xl py-1 z-50 animate-slide-down"
+                    style={{ background: '#001E3C', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+                  >
+                    <Link
+                      to="/track"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <AlertCircle size={13} /> My Reports
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors"
+                    >
+                      <LogOut size={13} /> Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-150"
+                style={{ color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.15)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
+              >
+                <LogIn size={13} /> Sign In
+              </Link>
+            )}
+
+            {/* Primary CTA */}
             <Link
               to="/report"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold transition-all duration-150"
@@ -153,7 +211,7 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-            <div className="pt-3 mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="pt-3 mt-2 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <Link
                 to="/report"
                 onClick={() => setMobileOpen(false)}
@@ -162,6 +220,24 @@ export default function Navbar() {
               >
                 + Report Issue
               </Link>
+              {isAuthenticated ? (
+                <button
+                  onClick={() => { handleLogout(); setMobileOpen(false) }}
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium text-rose-400"
+                  style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+                >
+                  <LogOut size={14} /> Sign Out
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium"
+                  style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.75)' }}
+                >
+                  <LogIn size={14} /> Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
       className="min-h-screen flex items-center justify-center px-4"
       style={{ backgroundColor: 'var(--bg-primary)' }}
     >
-      <div className="w-full max-w-sm animate-fade-in">
+      <div className="w-full max-w-sm">
 
         {/* ── Government header banner ── */}
         <div
@@ -116,7 +116,7 @@ export default function AdminLoginPage() {
 
             {error && (
               <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded text-sm animate-slide-down"
+                className="flex items-center gap-2 px-3 py-2.5 rounded text-sm"
                 style={{
                   background: 'rgba(220,38,38,0.08)',
                   border: '1px solid rgba(220,38,38,0.30)',
