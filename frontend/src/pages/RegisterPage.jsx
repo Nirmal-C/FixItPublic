@@ -36,25 +36,6 @@ function PasswordStrength({ password }) {
   )
 }
 
-// Defined outside RegisterPage so React gets a stable component reference.
-// If Field were defined inside the parent, every keystroke (setState) would
-// recreate the function, making React treat it as a new component type,
-// unmount+remount the input, and steal focus after each character typed.
-function Field({ id, label, icon: Icon, error, children }) {
-  return (
-    <div>
-      <label htmlFor={id} className="form-label">
-        <Icon size={13} className="inline mr-1.5 text-indigo-400" />
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="form-error mt-1"><AlertCircle size={12} /> {error}</p>
-      )}
-    </div>
-  )
-}
-
 export default function RegisterPage() {
   const [form, setForm] = useState({
     first_name: '',
@@ -163,7 +144,11 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
 
-            <Field id="first_name" label="First Name (optional)" icon={User} error={errors.first_name}>
+            <div>
+              <label htmlFor="first_name" className="form-label">
+                <User size={13} className="inline mr-1.5 text-indigo-400" />
+                First Name (optional)
+              </label>
               <input
                 id="first_name"
                 type="text"
@@ -173,9 +158,14 @@ export default function RegisterPage() {
                 placeholder="e.g. Aroha"
                 autoComplete="given-name"
               />
-            </Field>
+              {errors.first_name && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.first_name}</p>}
+            </div>
 
-            <Field id="username" label="Username" icon={User} error={errors.username}>
+            <div>
+              <label htmlFor="username" className="form-label">
+                <User size={13} className="inline mr-1.5 text-indigo-400" />
+                Username
+              </label>
               <input
                 id="username"
                 type="text"
@@ -185,9 +175,14 @@ export default function RegisterPage() {
                 placeholder="e.g. aroha_w"
                 autoComplete="username"
               />
-            </Field>
+              {errors.username && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.username}</p>}
+            </div>
 
-            <Field id="email" label="Email Address" icon={Mail} error={errors.email}>
+            <div>
+              <label htmlFor="email" className="form-label">
+                <Mail size={13} className="inline mr-1.5 text-indigo-400" />
+                Email Address
+              </label>
               <input
                 id="email"
                 type="email"
@@ -197,7 +192,8 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 autoComplete="email"
               />
-            </Field>
+              {errors.email && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.email}</p>}
+            </div>
 
             <div>
               <label htmlFor="password" className="form-label">
