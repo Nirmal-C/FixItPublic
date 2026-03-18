@@ -113,7 +113,7 @@ export default function DashboardPage() {
     .slice(0, 5)
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
+    <div className="flex flex-col gap-6">
 
       {/* Page header */}
       <div className="flex items-center justify-between">

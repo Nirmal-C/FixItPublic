@@ -174,7 +174,7 @@ export default function HomePage() {
   const { user } = useCitizenAuth()
 
   return (
-    <div className="animate-fade-in">
+    <div>
 
       {/* Hero */}
       <section style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>

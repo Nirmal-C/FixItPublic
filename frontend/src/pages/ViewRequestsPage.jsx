@@ -141,7 +141,7 @@ export default function ViewRequestsPage() {
   )
 
   return (
-    <div className="animate-fade-in">
+    <div>
 
       {/* ── Page header band ── */}
       <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>

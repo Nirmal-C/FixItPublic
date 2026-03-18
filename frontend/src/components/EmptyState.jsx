@@ -7,7 +7,7 @@ export default function EmptyState({
   action = null,
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 px-4 text-center gap-5 animate-fade-in">
+    <div className="flex flex-col items-center justify-center py-24 px-4 text-center gap-5">
       {Icon && (
         <div
           className="w-20 h-20 rounded-2xl flex items-center justify-center"

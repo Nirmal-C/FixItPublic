@@ -163,7 +163,7 @@ function MyTicketsList() {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="section-container py-10 animate-fade-in">
+    <div className="section-container py-10">
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
 
         {/* Header */}
@@ -384,7 +384,7 @@ function TicketTracker({ id }) {
 
   if (loading) {
     return (
-      <div className="section-container py-20 flex flex-col items-center gap-4 animate-fade-in">
+      <div className="section-container py-20 flex flex-col items-center gap-4">
         <Loader2 size={36} className="text-indigo-400 animate-spin" />
         <p className="text-slate-400 text-sm">Fetching report #{id}…</p>
       </div>
@@ -431,7 +431,7 @@ function TicketTracker({ id }) {
     .filter(Boolean)
 
   return (
-    <div className="section-container py-10 animate-fade-in">
+    <div className="section-container py-10">
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
 
         {/* Back + refresh */}

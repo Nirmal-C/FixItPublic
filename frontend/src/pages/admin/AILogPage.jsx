@@ -282,7 +282,7 @@ export default function AILogPage() {
   const successRate = total ? Math.round((successes / total) * 100) : 0
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in max-w-3xl">
+    <div className="flex flex-col gap-6 max-w-3xl">
 
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">

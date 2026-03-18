@@ -139,7 +139,7 @@ export default function AdminLayout() {
           </button>
         </header>
 
-        <main className="flex-1 p-6 animate-fade-in">
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
