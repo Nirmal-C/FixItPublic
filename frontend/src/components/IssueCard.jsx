@@ -1,4 +1,5 @@
-import { MapPin, Calendar, User, ArrowRight } from 'lucide-react'
+import { useState } from 'react'
+import { MapPin, Calendar, User, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import StatusBadge from './StatusBadge'
 import { CATEGORY_MAP } from '../utils/constants'
@@ -64,6 +65,63 @@ function LocationTooltip({ location, color }) {
   )
 }
 
+/* Photo slider used in the grid card when a ticket has multiple photos */
+function PhotoSlider({ photos, title }) {
+  const [idx, setIdx] = useState(0)
+  const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i - 1 + photos.length) % photos.length) }
+  const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i + 1) % photos.length) }
+
+  return (
+    <div className="relative w-full h-36 rounded overflow-hidden shrink-0">
+      <img
+        src={photos[idx]}
+        alt={`${title} — photo ${idx + 1}`}
+        className="w-full h-full object-cover transition-opacity duration-300"
+      />
+
+      {photos.length > 1 && (
+        <>
+          {/* Prev / Next */}
+          <button
+            onClick={prev}
+            className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+          >
+            <ChevronLeft size={14} className="text-white" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+          >
+            <ChevronRight size={14} className="text-white" />
+          </button>
+
+          {/* Dots */}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+            {photos.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIdx(i) }}
+                className="w-1.5 h-1.5 rounded-full transition-all"
+                style={{ background: i === idx ? '#fff' : 'rgba(255,255,255,0.45)' }}
+              />
+            ))}
+          </div>
+
+          {/* Counter badge */}
+          <span
+            className="absolute top-1.5 right-1.5 text-white text-xs px-1.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(0,0,0,0.55)', fontSize: '10px' }}
+          >
+            {idx + 1}/{photos.length}
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function IssueCard({ issue, compact = false }) {
   const cat = CATEGORY_MAP[issue.category] || {
     label: issue.category,
@@ -72,7 +130,11 @@ export default function IssueCard({ issue, compact = false }) {
     icon: 'HelpCircle',
   }
   const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
-  const photo = photoUrl(issue.photo)
+
+  // Collect all up to 5 photo fields
+  const photos = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+    .map((k) => photoUrl(issue[k]))
+    .filter(Boolean)
 
   /* ── Compact horizontal row (list view) ───────────────────────── */
   if (compact) {
@@ -143,24 +205,20 @@ export default function IssueCard({ issue, compact = false }) {
   /* ── Standard vertical card (grid / map sidebar view) ─────────── */
   return (
     <article className="issue-card group relative hover:z-[60]" style={{ overflow: 'visible' }}>
-      {/* Photo / icon thumbnail */}
-      <div
-        className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
-        style={{ background: cat.bgColor }}
-      >
-        {photo ? (
-          <img
-            src={photo}
-            alt={issue.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
+      {/* Photo slider or icon placeholder */}
+      {photos.length > 0 ? (
+        <PhotoSlider photos={photos} title={issue.title} />
+      ) : (
+        <div
+          className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ background: cat.bgColor }}
+        >
           <div className="flex flex-col items-center gap-2 opacity-40">
             <CatIcon size={28} style={{ color: cat.color }} />
             <span className="text-xs" style={{ color: cat.color }}>No photo</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex flex-col gap-3 flex-1">

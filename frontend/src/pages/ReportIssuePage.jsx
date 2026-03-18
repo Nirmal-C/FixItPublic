@@ -270,6 +270,12 @@ const handleGpsClick = () => {
       setErrors((prev) => ({ ...prev, ...stepErrors }))
       return Object.keys(stepErrors).length === 0
     }
+    if (s === 3) {
+      const stepErrors = {}
+      if (allErrors.reporter_email) stepErrors.reporter_email = allErrors.reporter_email
+      setErrors((prev) => ({ ...prev, ...stepErrors }))
+      return Object.keys(stepErrors).length === 0
+    }
     return true
   }
 
@@ -566,7 +572,15 @@ const handleGpsClick = () => {
                           boxShadow: `0 0 20px ${cat.color}20`,
                         } : {}}
                         onClick={() => {
-                          setForm((prev) => ({ ...prev, category: cat.id }))
+                          setForm((prev) => ({
+                            ...prev,
+                            category: cat.id,
+                            title: '',
+                            description: '',
+                            location_description: '',
+                            photos: [],
+                          }))
+                          setPhotoPreviews([])
                           setErrors((prev) => ({ ...prev, category: null }))
                         }}
                         aria-pressed={isSelected}
@@ -658,14 +672,14 @@ const handleGpsClick = () => {
                     className={`form-input resize-none ${errors.description ? 'error' : ''}`}
                     placeholder="Describe the issue in detail — what is broken, how long it's been like this, any safety concerns…"
                     rows={5}
-                    maxLength={2000}
+                    maxLength={500}
                   />
                   <div className="flex justify-between">
                     {errors.description
                       ? <p className="form-error"><AlertCircle size={13} />{errors.description}</p>
                       : <p className="form-hint">Minimum 20 characters</p>
                     }
-                    <span className="form-hint ml-auto">{form.description.length}/2000</span>
+                    <span className="form-hint ml-auto">{form.description.length}/500</span>
                   </div>
                 </div>
 
@@ -924,7 +938,7 @@ const handleGpsClick = () => {
 function Row({ label, value }) {
   return (
     <div className="flex gap-3 text-sm">
-      <span className="text-slate-500 shrink-0 w-20">{label}</span>
+      <span className="text-slate-500 shrink-0 whitespace-nowrap">{label}</span>
       <span className="text-slate-200 font-medium truncate">{value || '—'}</span>
     </div>
   )

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle2, Clock, Wrench, Search, MapPin, User,
   BrainCircuit, Sparkles, ArrowLeft, RefreshCw,
-  FileText, LogIn, Image as ImageIcon, X,
+  FileText, LogIn, Image as ImageIcon, X, Loader2,
 } from 'lucide-react'
 import { CATEGORY_MAP, MOCK_CREWS } from '../utils/constants'
 import { requestsApi } from '../api/client'
@@ -385,13 +385,8 @@ function TicketTracker({ id }) {
   if (loading) {
     return (
       <div className="section-container py-20 flex flex-col items-center gap-4 animate-fade-in">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(99,102,241,0.1)', border: '2px solid rgba(99,102,241,0.3)' }}
-        >
-          <BrainCircuit size={30} className="text-indigo-400" style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
-        </div>
-        <p className="text-slate-400 text-sm">Looking up report #{id}…</p>
+        <Loader2 size={36} className="text-indigo-400 animate-spin" />
+        <p className="text-slate-400 text-sm">Fetching report #{id}…</p>
       </div>
     )
   }

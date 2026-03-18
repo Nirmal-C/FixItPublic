@@ -104,9 +104,6 @@ export default function Layout() {
                 GitHub Repository
                 <ExternalLink size={10} />
               </a>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Sprint 2 — Public Reporting Platform
-              </span>
             </div>
           </div>
 
