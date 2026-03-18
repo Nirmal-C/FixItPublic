@@ -137,11 +137,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
         {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }) => (
           <div
             key={key}
-            className="glass p-5 flex flex-col gap-3 hover:scale-[1.02] transition-transform duration-200"
+            className="glass p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 hover:scale-[1.02] transition-transform duration-200"
           >
             {loading ? (
               <div className="flex flex-col gap-3">
@@ -152,16 +152,17 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: bg }}
                 >
-                  <Icon size={20} style={{ color }} />
+                  <Icon size={14} className="sm:hidden" style={{ color }} />
+                  <Icon size={20} className="hidden sm:block" style={{ color }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold" style={{ color }}>
+                  <p className="text-lg sm:text-2xl font-extrabold" style={{ color }}>
                     {stats[key]}
                   </p>
-                  <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 leading-tight">{label}</p>
                 </div>
               </>
             )}
@@ -191,12 +192,18 @@ export default function DashboardPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--divider)' }}>
-                {['#', 'Title', 'Category', 'Status', 'Date'].map((h) => (
+                {[
+                  { label: 'ID',       cls: '' },
+                  { label: 'Title',    cls: '' },
+                  { label: 'Category', cls: 'hidden sm:table-cell' },
+                  { label: 'Status',   cls: '' },
+                  { label: 'Date',     cls: 'hidden sm:table-cell' },
+                ].map(({ label, cls }) => (
                   <th
-                    key={h}
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                    key={label}
+                    className={`px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap ${cls}`}
                   >
-                    {h}
+                    {label}
                   </th>
                 ))}
               </tr>
@@ -222,11 +229,11 @@ export default function DashboardPage() {
                     className="cursor-pointer hover:bg-white/[0.02] transition-colors"
                     style={{ borderBottom: '1px solid var(--divider)' }}
                   >
-                    <td className="px-6 py-4 text-xs text-slate-500">#{t.id}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500">{t.id}</td>
                     <td className="px-6 py-4 text-sm font-medium max-w-xs truncate" style={{ color: 'var(--text-primary)' }}>
                       {t.title}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 hidden sm:table-cell">
                       <span
                         className="badge border text-xs inline-flex items-center gap-1"
                         style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
@@ -238,7 +245,7 @@ export default function DashboardPage() {
                     <td className="px-6 py-4">
                       <StatusBadge status={t.status} size="sm" />
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
+                    <td className="px-6 py-4 text-xs text-slate-500 hidden sm:table-cell">
                       {formatDate(t.created_at)}
                     </td>
                   </tr>

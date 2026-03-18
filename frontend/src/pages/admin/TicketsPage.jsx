@@ -22,6 +22,36 @@ function photoUrl(photo) {
   return `/api/photos/${photo}/`
 }
 
+// Compact photo slider used inside the side panel (not the full-screen modal).
+function PanelPhotoSlider({ photos }) {
+  const [idx, setIdx] = useState(0)
+  const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i - 1 + photos.length) % photos.length) }
+  const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i + 1) % photos.length) }
+  return (
+    <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', maxHeight: '160px' }}>
+      <img src={photos[idx]} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+      {photos.length > 1 && (
+        <>
+          <button onClick={prev} className="absolute left-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.45)' }}>
+            <ChevronLeft size={14} />
+          </button>
+          <button onClick={next} className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.45)' }}>
+            <ChevronRight size={14} />
+          </button>
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+            {photos.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-200 ${i === idx ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40'}`} />
+            ))}
+          </div>
+          <span className="absolute top-1.5 right-1.5 text-[10px] text-white rounded px-1.5 py-0.5" style={{ background: 'rgba(0,0,0,0.5)' }}>
+            {idx + 1}/{photos.length}
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
 const MOCK_ISSUES = [
   {
     id: 1, title: 'Broken streetlight on Queen St near No. 42',
@@ -128,7 +158,7 @@ function TicketModal({ ticket, onClose }) {
             style={{ borderBottom: '1px solid var(--divider)' }}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-xs text-slate-500 font-mono shrink-0">#{ticket.id}</span>
+              <span className="text-xs text-slate-500 font-mono shrink-0">ID {ticket.id}</span>
               <h2 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                 {ticket.title}
               </h2>
@@ -404,12 +434,12 @@ export default function TicketsPage() {
       ])
       setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
       setSelectedTicket(update)
-      toast.success(`Ticket #${selectedTicket.id} updated`, { title: 'Changes saved' })
+      toast.success(`Ticket ID ${selectedTicket.id} updated`, { title: 'Changes saved' })
     } catch {
       // Backend offline — update in-memory only so the admin can still work
       setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? update : t))
       setSelectedTicket(update)
-      toast.warning('Saved locally (backend offline)', { title: `Ticket #${selectedTicket.id}` })
+      toast.warning('Saved locally (backend offline)', { title: `Ticket ID ${selectedTicket.id}` })
     } finally {
       setSaving(false)
     }
@@ -431,7 +461,7 @@ export default function TicketsPage() {
       t.created_at ? new Date(t.created_at).toLocaleDateString('en-NZ') : '',
     ])
     const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}`).join(','))
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
     // Create a temporary anchor element and click it to trigger the browser's
@@ -522,12 +552,20 @@ export default function TicketsPage() {
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--divider)' }}>
-                  {['#', 'Title', 'Category', 'Status', 'Location', 'Reporter', 'Date'].map((h) => (
+                  {[
+                    { label: 'ID',       cls: '' },
+                    { label: 'Title',    cls: '' },
+                    { label: 'Category', cls: 'hidden sm:table-cell' },
+                    { label: 'Status',   cls: '' },
+                    { label: 'Location', cls: 'hidden md:table-cell' },
+                    { label: 'Reporter', cls: 'hidden md:table-cell' },
+                    { label: 'Date',     cls: 'hidden sm:table-cell' },
+                  ].map(({ label, cls }) => (
                     <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap"
+                      key={label}
+                      className={`px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap ${cls}`}
                     >
-                      {h}
+                      {label}
                     </th>
                   ))}
                 </tr>
@@ -545,7 +583,7 @@ export default function TicketsPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12">
+                    <td colSpan={7} className="py-12 text-center">
                       <EmptyState
                         title="No tickets found"
                         description="Try clearing the search or filter."
@@ -569,11 +607,11 @@ export default function TicketsPage() {
                       onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
                       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = '' }}
                     >
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">#{t.id}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{t.id}</td>
                       <td className="px-4 py-3 text-sm font-medium max-w-[180px] truncate" style={{ color: 'var(--text-primary)' }}>
                         {t.title}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
                         <span
                           className="badge border text-xs inline-flex items-center gap-1"
                           style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
@@ -585,13 +623,13 @@ export default function TicketsPage() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         <StatusBadge status={t.status} size="sm" />
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[130px] truncate">
+                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[130px] truncate hidden md:table-cell">
                         {t.location_description || '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap hidden md:table-cell">
                         {t.reporter_name || <span className="italic">Anonymous</span>}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap hidden sm:table-cell">
                         {formatDate(t.created_at)}
                       </td>
                     </tr>
@@ -624,7 +662,7 @@ export default function TicketsPage() {
                 style={{ borderBottom: '1px solid var(--divider)' }}
               >
                 <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Ticket #{selectedTicket.id}
+                  Ticket ID {selectedTicket.id}
                 </h3>
                 <div className="flex items-center gap-1">
                   <button
@@ -702,33 +740,42 @@ export default function TicketsPage() {
                   )}
                 </div>
 
-                {/* Photo / Before-After Slider.
-                    Resolved tickets may have before_photo + after_photo for the comparison slider.
-                    Regular photos are proxied through Django (photoUrl) so the private Azure
-                    container is never called directly from the browser. */}
-                {selectedTicket.before_photo && selectedTicket.after_photo ? (
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Before / After</p>
-                    <BeforeAfterSlider
-                      beforeSrc={selectedTicket.before_photo}
-                      afterSrc={selectedTicket.after_photo}
-                    />
-                  </div>
-                ) : selectedTicket.photo ? (
-                  <img
-                    src={photoUrl(selectedTicket.photo)}
-                    alt="Report photo"
-                    className="w-full rounded-xl object-cover max-h-40"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-24 rounded-xl flex items-center justify-center gap-2"
-                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--card-border)' }}
-                  >
-                    <Image size={16} className="text-slate-600" />
-                    <span className="text-xs text-slate-600">No photo attached</span>
-                  </div>
-                )}
+                {/* Photos — collect all 5 photo fields, show slider if multiple */}
+                {(() => {
+                  const panelPhotos = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+                    .map((k) => photoUrl(selectedTicket[k]))
+                    .filter(Boolean)
+
+                  if (selectedTicket.before_photo && selectedTicket.after_photo) {
+                    return (
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Before / After</p>
+                        <BeforeAfterSlider beforeSrc={selectedTicket.before_photo} afterSrc={selectedTicket.after_photo} />
+                      </div>
+                    )
+                  }
+
+                  if (panelPhotos.length === 0) {
+                    return (
+                      <div
+                        className="w-full h-24 rounded-xl flex items-center justify-center gap-2"
+                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--card-border)' }}
+                      >
+                        <Image size={16} className="text-slate-600" />
+                        <span className="text-xs text-slate-600">No photo attached</span>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                        Photos{panelPhotos.length > 1 ? ` (${panelPhotos.length})` : ''}
+                      </p>
+                      <PanelPhotoSlider photos={panelPhotos} />
+                    </div>
+                  )
+                })()}
 
                 {/* Status timeline — visualises the ticket lifecycle as a horizontal
                     progress track so the admin can see at a glance how far along
