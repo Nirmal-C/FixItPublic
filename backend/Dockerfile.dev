@@ -15,9 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-COPY entrypoint.local.sh /entrypoint.local.sh
-RUN chmod +x /entrypoint.local.sh
-
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.dev.sh"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py create_superuser_from_env && python manage.py runserver 0.0.0.0:8000"]
