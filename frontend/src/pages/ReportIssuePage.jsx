@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
@@ -69,6 +70,7 @@ const INITIAL_FORM = {
 }
 
 export default function ReportIssuePage() {
+  const { user } = useCitizenAuth()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
@@ -270,12 +272,8 @@ const handleGpsClick = () => {
       setErrors((prev) => ({ ...prev, ...stepErrors }))
       return Object.keys(stepErrors).length === 0
     }
-    if (s === 3) {
-      const stepErrors = {}
-      if (allErrors.reporter_email) stepErrors.reporter_email = allErrors.reporter_email
-      setErrors((prev) => ({ ...prev, ...stepErrors }))
-      return Object.keys(stepErrors).length === 0
-    }
+    // Step 3 is review-only; no extra validation needed
+    if (s === 3) return true
     return true
   }
 
@@ -459,7 +457,7 @@ const handleGpsClick = () => {
               <Row label="Title" value={form.title} />
               <Row label="Category" value={CATEGORIES.find(c => c.id === form.category)?.label} />
               <Row label="Location" value={form.location_description} />
-              {form.reporter_name && <Row label="Submitted by" value={form.reporter_name} />}
+              {user && <Row label="Submitted by" value={user.username} />}
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
@@ -491,6 +489,7 @@ const handleGpsClick = () => {
 
   const selectedCat = CATEGORIES.find((c) => c.id === form.category)
 
+
   return (
     <div className="section-container py-10">
       <div className="max-w-2xl mx-auto">
@@ -498,7 +497,7 @@ const handleGpsClick = () => {
         <div className="mb-10">
           <h1 className="text-3xl font-extrabold text-slate-100">Report an Issue</h1>
           <p className="mt-2 text-slate-400">
-            Help your community by reporting a public facility issue. Anonymous reports are welcome.
+            Help your community by reporting a public facility issue. Updates are sent to your email automatically.
           </p>
         </div>
 

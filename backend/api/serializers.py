@@ -14,8 +14,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = User
-        fields = ('username', 'email', 'password', 'password2', 'first_name', 'phone')
-        extra_kwargs = {'phone': {'required': False}, 'first_name': {'required': False}}
+        fields = ('username', 'email', 'password', 'password2', 'first_name', 'phone', 'email_notifications')
+        extra_kwargs = {
+            'phone':               {'required': False},
+            'first_name':          {'required': False},
+            'email_notifications': {'required': False},
+        }
 
     def validate(self, attrs):
         if attrs['password'] != attrs.pop('password2'):
@@ -30,20 +34,21 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             phone=validated_data.get('phone', ''),
             role=User.Role.CITIZEN,
+            email_notifications=validated_data.get('email_notifications', False),
         )
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'date_joined')
+        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications', 'date_joined')
         read_only_fields = ('id', 'role', 'date_joined')
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'is_active', 'date_joined')
+        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications', 'is_active', 'date_joined')
         read_only_fields = ('id', 'date_joined')
 
 

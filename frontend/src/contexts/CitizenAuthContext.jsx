@@ -11,21 +11,41 @@ function decodePayload(token) {
   catch { return null }
 }
 
+function isTokenExpired(payload) {
+  if (!payload?.exp) return true
+  // exp is seconds since epoch — give a 30-second buffer for clock skew
+  return Date.now() / 1000 > payload.exp - 30
+}
+
+function loadUser() {
+  const token = localStorage.getItem(C_ACCESS)
+  if (!token) return null
+  const payload = decodePayload(token)
+  if (!payload || isTokenExpired(payload)) {
+    // Stale token — clear storage so we start fresh
+    localStorage.removeItem(C_ACCESS)
+    localStorage.removeItem(C_REFRESH)
+    return null
+  }
+  return payload
+}
+
 export function CitizenAuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem(C_ACCESS)
-    return token ? decodePayload(token) : null
-  })
+  const [user, setUser] = useState(loadUser)
 
   const isAuthenticated = !!user
+
+  const _setFromToken = useCallback((access) => {
+    localStorage.setItem(C_ACCESS, access)
+    setUser(decodePayload(access))
+  }, [])
 
   const login = useCallback(async (username, password) => {
     const res = await authApi.login({ username, password })
     const { access, refresh } = res.data
-    localStorage.setItem(C_ACCESS, access)
     localStorage.setItem(C_REFRESH, refresh)
-    setUser(decodePayload(access))
-  }, [])
+    _setFromToken(access)
+  }, [_setFromToken])
 
   const register = useCallback(async (data) => {
     await authApi.register(data)
@@ -38,8 +58,21 @@ export function CitizenAuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  /**
+   * Persist a partial profile update (e.g. toggling email_notifications)
+   * via PATCH /api/auth/profile/ then merge changes into local user state.
+   * The JWT is not reissued on profile updates so we update state directly.
+   */
+  const updateProfile = useCallback(async (changes) => {
+    await authApi.updateProfile(changes)
+    setUser((prev) => prev ? { ...prev, ...changes } : prev)
+  }, [])
+
   return (
-    <CitizenAuthContext.Provider value={{ isAuthenticated, user, login, register, logout }}>
+    <CitizenAuthContext.Provider value={{
+      isAuthenticated, user,
+      login, register, logout, updateProfile,
+    }}>
       {children}
     </CitizenAuthContext.Provider>
   )
