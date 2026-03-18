@@ -80,14 +80,21 @@ STATIC_URL  = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Always use Azure Blob Storage for media files
-DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
-AZURE_ACCOUNT_NAME        = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')
-AZURE_ACCOUNT_KEY         = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY')
-AZURE_CONTAINER           = 'maintenance-photos'
-AZURE_URL_EXPIRATION_SECS = None
-AZURE_CUSTOM_DOMAIN       = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
-MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
+# Azure Blob Storage — private container, SAS tokens for signed URLs.
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "account_name":    os.environ.get('AZURE_STORAGE_ACCOUNT_NAME'),
+            "account_key":     os.environ.get('AZURE_STORAGE_ACCOUNT_KEY'),
+            "azure_container": "maintenance-photos",
+            "expiration_secs": 3600,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # ── 6. CORS ────────────────────────────────────────────────────────────────────
 CORS_ALLOW_ALL_ORIGINS = True

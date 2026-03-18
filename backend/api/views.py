@@ -1,11 +1,15 @@
-from django.http import JsonResponse
+import requests as http_requests
+from django.http import JsonResponse, HttpResponse
 from django.db import connection
+from django.db.models import Q
 from django.core.files.storage import default_storage
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .models import MaintenanceTicket
 from .serializers import (
@@ -13,10 +17,12 @@ from .serializers import (
     AdminUserSerializer, CreateAdminSerializer,
     TicketListSerializer, TicketDetailSerializer, TicketStatusSerializer,
 )
-from .permissions import IsCouncilAdmin, IsSuperuser, IsOwnerOrAdmin
+from .permissions import IsCouncilAdmin, IsSuperuser
 
 User = get_user_model()
 
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
 
 def hello_world(request):
     return JsonResponse({'message': 'Hello from the Django Backend!'})
@@ -50,6 +56,41 @@ def health_check(request):
     return JsonResponse(status_data, status=200)
 
 
+# ── Photo proxy ────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def serve_photo(request, path):
+    """
+    GET /api/photos/<path>/
+    Proxies ticket photos through Django so the frontend never calls
+    Azure directly. Django generates a fresh signed SAS URL internally,
+    fetches the blob, and streams the bytes back to the browser.
+    The Azure container stays private at all times.
+    """
+    ticket = MaintenanceTicket.objects.filter(photo=path).first()
+    if not ticket or not ticket.photo:
+        return Response({'detail': 'Not found.'}, status=404)
+
+    sas_url = ticket.photo.url
+    resp = http_requests.get(sas_url, timeout=10)
+    if resp.status_code != 200:
+        return Response({'detail': 'Could not retrieve photo.'}, status=502)
+
+    return HttpResponse(
+        resp.content,
+        content_type=resp.headers.get('Content-Type', 'image/jpeg'),
+    )
+
+
+# ── Pagination ─────────────────────────────────────────────────────────────────
+
+class TicketPagination(PageNumberPagination):
+    page_size             = 9
+    page_size_query_param = 'page_size'
+    max_page_size         = 1000
+
+
 # ── Auth ───────────────────────────────────────────────────────────────────────
 
 class RegisterView(generics.CreateAPIView):
@@ -75,31 +116,17 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 # ── Superuser: user management ─────────────────────────────────────────────────
 
 class UserListView(generics.ListAPIView):
-    """
-    GET /api/superuser/users/
-    List all users — superusers only.
-    """
     queryset           = User.objects.all().order_by('-date_joined')
     serializer_class   = AdminUserSerializer
     permission_classes = [IsSuperuser]
 
 
 class UserCreateView(generics.CreateAPIView):
-    """
-    POST /api/superuser/users/
-    Create a new admin or superuser account — superusers only.
-    """
     serializer_class   = CreateAdminSerializer
     permission_classes = [IsSuperuser]
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    /api/superuser/users/<id>/  — view any user
-    PATCH  /api/superuser/users/<id>/  — update role / is_active
-    DELETE /api/superuser/users/<id>/  — remove user
-    Superusers only. A superuser cannot demote or delete themselves.
-    """
     queryset           = User.objects.all()
     serializer_class   = AdminUserSerializer
     permission_classes = [IsSuperuser]
@@ -116,7 +143,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Prevent a superuser from accidentally demoting themselves
         if instance == request.user and 'role' in request.data:
             if request.data['role'] != User.Role.SUPERUSER:
                 return Response(
@@ -127,10 +153,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return self.update(request, *args, **kwargs)
 
 
-# ── Admin: ticket management ───────────────────────────────────────────────────
+# ── Admin: read-only user list ─────────────────────────────────────────────────
 
 class AdminUserListView(generics.ListAPIView):
-    """GET /api/admin/users/ — read-only user list for admins."""
     queryset           = User.objects.all().order_by('-date_joined')
     serializer_class   = AdminUserSerializer
     permission_classes = [IsCouncilAdmin]
@@ -140,6 +165,7 @@ class AdminUserListView(generics.ListAPIView):
 
 class TicketListCreateView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
+    pagination_class   = TicketPagination
 
     def get_serializer_class(self):
         return TicketDetailSerializer if self.request.method == 'POST' else TicketListSerializer
@@ -147,12 +173,20 @@ class TicketListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs     = MaintenanceTicket.objects.all()
         params = self.request.query_params
+
         if params.get('status'):
             qs = qs.filter(status=params['status'])
+
         if params.get('category'):
             qs = qs.filter(category=params['category'])
+
         if params.get('search'):
-            qs = qs.filter(title__icontains=params['search'])
+            term = params['search']
+            qs = qs.filter(
+                Q(title__icontains=term) |
+                Q(location_description__icontains=term)
+            )
+
         return qs
 
 
@@ -172,6 +206,7 @@ class TicketStatusUpdateView(generics.UpdateAPIView):
 class MyTicketsView(generics.ListAPIView):
     serializer_class   = TicketListSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class   = TicketPagination
 
     def get_queryset(self):
         return MaintenanceTicket.objects.filter(reporter_user=self.request.user)

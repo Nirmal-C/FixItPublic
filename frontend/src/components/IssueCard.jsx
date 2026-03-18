@@ -11,6 +11,18 @@ function formatDate(dateStr) {
   }).format(new Date(dateStr))
 }
 
+// Converts the stored relative path (e.g. "tickets/2026/03/photo.jpg")
+// or a legacy full Azure URL into a backend proxy URL so the browser
+// never calls Azure directly (private container would 403).
+function photoUrl(photo) {
+  if (!photo) return null
+  if (photo.startsWith('http')) {
+    const match = photo.match(/maintenance-photos\/(.+?)(\?|$)/)
+    return match ? `/api/photos/${match[1]}/` : null
+  }
+  return `/api/photos/${photo}/`
+}
+
 /* Small popup that appears above truncated location text — like a map popup */
 function LocationTooltip({ location, color }) {
   if (!location) return null
@@ -59,6 +71,7 @@ export default function IssueCard({ issue, compact = false }) {
     icon: 'HelpCircle',
   }
   const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
+  const photo = photoUrl(issue.photo)
 
   /* ── Compact horizontal row (list view) ───────────────────────── */
   if (compact) {
@@ -124,9 +137,9 @@ export default function IssueCard({ issue, compact = false }) {
         className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
         style={{ background: cat.bgColor }}
       >
-        {issue.photo ? (
+        {photo ? (
           <img
-            src={issue.photo}
+            src={photo}
             alt={issue.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
