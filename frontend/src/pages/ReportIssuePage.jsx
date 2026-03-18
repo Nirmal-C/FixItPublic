@@ -495,14 +495,14 @@ const handleGpsClick = () => {
     <div className="section-container py-10">
       <div className="max-w-2xl mx-auto">
 
-        <div className="mb-10 animate-fade-in">
+        <div className="mb-10">
           <h1 className="text-3xl font-extrabold text-slate-100">Report an Issue</h1>
           <p className="mt-2 text-slate-400">
             Help your community by reporting a public facility issue. Anonymous reports are welcome.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 mb-8 animate-fade-in">
+        <div className="flex items-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex items-center gap-2 flex-1">
               <button
