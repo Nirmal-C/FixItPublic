@@ -5,6 +5,7 @@ from .token_serializer import CustomTokenObtainPairSerializer
 from .views import (
     hello_world, health_check,
     serve_photo,
+    public_stats,
     RegisterView, ProfileView,
     UserListView, UserCreateView, UserDetailView,
     AdminUserListView,
@@ -20,6 +21,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 urlpatterns = [
     path('hello/',  hello_world),
     path('health/', health_check, name='health_check'),
+    path('stats/',  public_stats, name='public-stats'),
 
     # ── Auth ──────────────────────────────────────────────────────────────────
     path('auth/register/',      RegisterView.as_view(),              name='auth-register'),

@@ -271,3 +271,51 @@ class MyTicketsView(generics.ListAPIView):
 
     def get_queryset(self):
         return MaintenanceTicket.objects.filter(reporter_user=self.request.user)
+
+
+# ── Public stats ───────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_stats(request):
+    """
+    GET /api/stats/
+    Returns live aggregated metrics for the public homepage:
+      - total_reports   : total number of tickets ever filed
+      - resolved_count  : tickets with status 'resolved' or 'closed'
+      - avg_response_days: median calendar days from created_at → updated_at
+                           for resolved/closed tickets (rounded to 1 decimal)
+      - community_members: count of registered citizen users
+    """
+    from django.db.models import Count, F, ExpressionWrapper, DurationField
+    from django.db.models.functions import Greatest
+    import statistics
+
+    total_reports = MaintenanceTicket.objects.count()
+
+    resolved_qs = MaintenanceTicket.objects.filter(
+        status__in=['resolved', 'closed']
+    )
+    resolved_count = resolved_qs.count()
+
+    # Compute avg response time in days for resolved/closed tickets
+    avg_response_days = None
+    if resolved_count > 0:
+        durations = resolved_qs.annotate(
+            duration=ExpressionWrapper(
+                F('updated_at') - F('created_at'),
+                output_field=DurationField()
+            )
+        ).values_list('duration', flat=True)
+        days_list = [d.total_seconds() / 86400 for d in durations if d is not None]
+        if days_list:
+            avg_response_days = round(statistics.median(days_list), 1)
+
+    community_members = User.objects.filter(role='citizen').count()
+
+    return Response({
+        'total_reports':     total_reports,
+        'resolved_count':    resolved_count,
+        'avg_response_days': avg_response_days,
+        'community_members': community_members,
+    })

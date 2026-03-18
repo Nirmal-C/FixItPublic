@@ -123,12 +123,14 @@ export const PAGE_SIZE = 9
 export const MAX_FILE_SIZE_MB = 10
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-// Maintenance crews used for ticket assignment in the admin dashboard.
-// Sprint 3 will replace this with real crew data from the backend.
-export const MOCK_CREWS = [
+// Maintenance crews -- mirrors the Crew choices defined in backend/api/models.py.
+// Consumed by the admin ticket panel, the track page, and the AI log.
+export const CREWS = [
   { id: 'crew-alpha',   label: 'Team Alpha',   specialty: 'Roads & Footpaths' },
   { id: 'crew-bravo',   label: 'Team Bravo',   specialty: 'Streetlights & Electrical' },
   { id: 'crew-charlie', label: 'Team Charlie', specialty: 'Parks & Green Spaces' },
   { id: 'crew-delta',   label: 'Team Delta',   specialty: 'Graffiti Removal' },
   { id: 'crew-echo',    label: 'Team Echo',    specialty: 'General Maintenance' },
 ]
+
+export const CREW_MAP = Object.fromEntries(CREWS.map((c) => [c.id, c]))

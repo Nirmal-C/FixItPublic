@@ -5,7 +5,7 @@ import {
   BrainCircuit, Sparkles, ArrowLeft, RefreshCw,
   FileText, LogIn, Image as ImageIcon, X, Loader2,
 } from 'lucide-react'
-import { CATEGORY_MAP, MOCK_CREWS } from '../utils/constants'
+import { CATEGORY_MAP, CREWS, CREW_MAP } from '../utils/constants'
 import { requestsApi } from '../api/client'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 import StatusBadge from '../components/StatusBadge'
@@ -422,7 +422,7 @@ function TicketTracker({ id }) {
 
   const cat = CATEGORY_MAP[ticket.category] || { label: ticket.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)' }
   const priority = PRIORITY_MAP[ticket.category] || PRIORITY_MAP.other
-  const crew = MOCK_CREWS.find((c) => c.id === ticket.assigned_crew)
+  const crew = CREW_MAP[ticket.assigned_crew]
   const reasoning = REASONING_MAP[ticket.category] || REASONING_MAP.other
 
   // Collect all non-null photo URLs from the ticket (photo through photo5)

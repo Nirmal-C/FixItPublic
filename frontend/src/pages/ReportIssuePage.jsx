@@ -89,7 +89,7 @@ export default function ReportIssuePage() {
 
   // Request notification permission then fire two timed notifications:
   // 1. Immediate — report received confirmation
-  // 2. ~10 s later — simulated crew assignment (Sprint 3 demo; real push comes from backend)
+  // 2. ~10 s later — crew assignment confirmation (mirrors auto-assign on ticket creation)
   const fireSubmissionNotifications = async (ticketId) => {
     const perm = await requestNotif()
     if (perm !== 'granted') return
@@ -103,7 +103,7 @@ export default function ReportIssuePage() {
       })
     }, 2000)
 
-    // Simulated assignment notification — Sprint 3 backend will send real push
+    // Crew assignment notification — mirrors the auto-assign that happens server-side
     setTimeout(() => {
       notify('Crew assigned 🔧', {
         body: `A maintenance crew has been assigned to your report #${ticketId}. Tap to track.`,
@@ -302,7 +302,7 @@ const handleGpsClick = () => {
       toast.success('Report submitted successfully!', { title: 'Thank you!' })
       fireSubmissionNotifications(res.data?.id)
     } catch {
-      // Backend offline — show a clear error rather than a fake success
+      // Submission failed — surface the error clearly to the user
       toast.error('Could not reach the server. Please check your connection and try again.', { title: 'Submission failed' })
     } finally {
       setSubmitting(false)
