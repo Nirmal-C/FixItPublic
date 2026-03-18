@@ -6,6 +6,8 @@ from .models import MaintenanceTicket
 User = get_user_model()
 
 
+# ── Auth ───────────────────────────────────────────────────────────────────────
+
 class RegisterSerializer(serializers.ModelSerializer):
     password  = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, label='Confirm password')
@@ -55,9 +57,10 @@ class CreateAdminSerializer(serializers.ModelSerializer):
         extra_kwargs = {'phone': {'required': False}}
 
     def validate_role(self, value):
-        # Superusers can only create admins or other superusers — not citizens via this endpoint
         if value == User.Role.CITIZEN:
-            raise serializers.ValidationError('Use the public register endpoint for citizen accounts.')
+            raise serializers.ValidationError(
+                'Use the public register endpoint for citizen accounts.'
+            )
         return value
 
     def validate(self, attrs):
@@ -75,24 +78,47 @@ class CreateAdminSerializer(serializers.ModelSerializer):
         )
 
 
+# ── Tickets ────────────────────────────────────────────────────────────────────
+
 class TicketListSerializer(serializers.ModelSerializer):
-    reporter_display = serializers.SerializerMethodField()
+    """
+    Used for GET /api/requests/ list responses.
+
+    Exposes every field consumed by the frontend:
+      IssueCard / ViewRequestsPage : id, title, category, status, description,
+                                     location_description, reporter_name,
+                                     created_at, photo, lat, lng
+      DashboardPage / TicketsPage  : all of the above + updated_at
+
+    reporter_name is derived: the linked user's username takes priority,
+    then the anonymous name submitted with the form; None is returned
+    (not an empty string) so the frontend's `|| 'Anonymous'` fallback works.
+    """
+    reporter_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = MaintenanceTicket
         fields = (
             'id', 'title', 'category', 'status',
-            'location_description', 'reporter_display',
+            'description', 'location_description',
+            'reporter_name', 'photo',
+            'lat', 'lng',
             'created_at', 'updated_at',
         )
 
-    def get_reporter_display(self, obj):
+    def get_reporter_name(self, obj):
         if obj.reporter_user:
             return obj.reporter_user.username
-        return obj.reporter_name or 'Anonymous'
+        return obj.reporter_name or None
 
 
 class TicketDetailSerializer(serializers.ModelSerializer):
+    """
+    Used for POST /api/requests/ (create) and GET /api/requests/<id>/.
+
+    Includes the full field set so the admin detail panel and the
+    public success screen can display everything.
+    """
     reporter_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -100,8 +126,10 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'description', 'category', 'status',
             'location_description', 'photo',
+            'lat', 'lng',
             'reporter_name', 'reporter_email', 'reporter_user',
-            'reporter_display', 'created_at', 'updated_at',
+            'reporter_display',
+            'created_at', 'updated_at',
         )
         read_only_fields = ('id', 'status', 'reporter_user', 'created_at', 'updated_at')
 
@@ -118,6 +146,11 @@ class TicketDetailSerializer(serializers.ModelSerializer):
 
 
 class TicketStatusSerializer(serializers.ModelSerializer):
+    """
+    Used by PATCH /api/requests/<id>/status/
+    Only the status field is writable; returns id + status so the frontend
+    can optimistically update the ticket list without a full refetch.
+    """
     class Meta:
         model  = MaintenanceTicket
         fields = ('id', 'status')
