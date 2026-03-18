@@ -20,6 +20,12 @@ from .serializers import (
     TicketStatusSerializer, TicketAssignSerializer,
 )
 from .permissions import IsCouncilAdmin, IsSuperuser
+from .emails import (
+    send_welcome_email,
+    send_ticket_confirmation,
+    send_ticket_status_update,
+    send_signin_notification,
+)
 
 User = get_user_model()
 
@@ -130,6 +136,7 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        send_welcome_email(user)
         return Response(UserProfileSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
@@ -219,9 +226,10 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         """Auto-assign crew based on category when a ticket is first created."""
-        category = self.request.data.get('category', 'other')
+        category  = self.request.data.get('category', 'other')
         auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
-        serializer.save(assigned_crew=auto_crew)
+        ticket    = serializer.save(assigned_crew=auto_crew)
+        send_ticket_confirmation(ticket)
 
 
 class TicketDetailView(generics.RetrieveAPIView):
@@ -236,6 +244,12 @@ class TicketStatusUpdateView(generics.UpdateAPIView):
     permission_classes = [IsCouncilAdmin]
     http_method_names  = ['patch']
 
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        ticket     = serializer.save()
+        if ticket.status != old_status:
+            send_ticket_status_update(ticket, old_status=old_status)
+
 
 class TicketAssignView(generics.UpdateAPIView):
     """
@@ -249,7 +263,7 @@ class TicketAssignView(generics.UpdateAPIView):
     http_method_names  = ['patch']
 
     def perform_update(self, serializer):
-        data = serializer.validated_data
+        data  = serializer.validated_data
         extra = {}
         # If escalation is being set to True, stamp who escalated and when
         if data.get('escalated') and not serializer.instance.escalated:
@@ -261,7 +275,11 @@ class TicketAssignView(generics.UpdateAPIView):
             extra['escalated_by']     = None
             extra['escalation_level'] = ''
             extra['escalation_note']  = ''
-        serializer.save(**extra)
+        old_crew = serializer.instance.assigned_crew
+        ticket   = serializer.save(**extra)
+        # Email the reporter if the crew assignment changed
+        if ticket.assigned_crew != old_crew:
+            send_ticket_status_update(ticket)
 
 
 class MyTicketsView(generics.ListAPIView):

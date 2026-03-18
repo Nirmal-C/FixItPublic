@@ -9,9 +9,13 @@ class User(AbstractUser):
         ADMIN     = 'admin',     'Admin'
         SUPERUSER = 'superuser', 'Superuser'
 
-    role  = models.CharField(max_length=10, choices=Role.choices, default=Role.CITIZEN)
-    phone = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(unique=True)
+    role                = models.CharField(max_length=10, choices=Role.choices, default=Role.CITIZEN)
+    phone               = models.CharField(max_length=20, blank=True)
+    email               = models.EmailField(unique=True)
+    email_notifications = models.BooleanField(
+        default=False,
+        help_text='Send transactional emails for account events and ticket updates.',
+    )
 
     @property
     def is_council_admin(self):

@@ -96,10 +96,11 @@ export const requestsApi = {
 }
 
 export const authApi = {
-  login:    (data) => apiClient.post('/api/auth/token/', data),
-  register: (data) => apiClient.post('/api/auth/register/', data),
-  refresh:  (data) => apiClient.post('/api/auth/token/refresh/', data),
-  profile:  ()     => apiClient.get('/api/auth/profile/'),
+  login:         (data)    => apiClient.post('/api/auth/token/', data),
+  register:      (data)    => apiClient.post('/api/auth/register/', data),
+  refresh:       (data)    => apiClient.post('/api/auth/token/refresh/', data),
+  profile:       ()        => apiClient.get('/api/auth/profile/'),
+  updateProfile: (changes) => apiClient.patch('/api/auth/profile/', changes),
 }
 
 export const healthApi = {
