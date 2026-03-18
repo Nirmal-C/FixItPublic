@@ -31,7 +31,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
-    if (error?.response?.status === 401 && !original._retry) {
+    // Never intercept auth endpoints — login/register errors must reach the caller
+    const isAuthEndpoint = original?.url?.includes('/auth/token') || original?.url?.includes('/auth/register')
+    if (error?.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true
       const isCitizen = !!localStorage.getItem(C_REFRESH)
       const refreshKey = isCitizen ? C_REFRESH : A_REFRESH
