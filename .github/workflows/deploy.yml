@@ -1,20 +1,26 @@
 name: CI/CD Build and Deploy
+
 on:
   push:
     branches:
       - main
+
 jobs:
+
   build-and-push:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Log in to Azure Container Registry
         uses: azure/docker-login@v1
         with:
           login-server: ${{ secrets.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
+
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v5
         with:
@@ -23,6 +29,7 @@ jobs:
           tags: |
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
+
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v5
         with:
@@ -34,27 +41,33 @@ jobs:
           tags: |
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Log in to ACR
         uses: azure/docker-login@v1
         with:
           login-server: ${{ secrets.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
+
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
         with:
           resource-group: Group_Project
           cluster-name: GroupProjectCluster
+
       - name: Create or Update K8s Secrets
         run: |
           kubectl create secret generic app-secrets \
@@ -69,7 +82,9 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_NAME='${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}' \
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --from-literal=EMAIL_HOST_PASSWORD='${{ secrets.EMAIL_HOST_PASSWORD }}' \
+            --from-literal=OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -79,10 +94,12 @@ jobs:
           images: |
             ${{ secrets.ACR_LOGIN_SERVER }}/django-backend:${{ github.sha }}
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
+
       - name: Restart Deployments
         run: |
           kubectl rollout restart deployment/django-backend
           kubectl rollout restart deployment/react-frontend
+
       - name: Wait for Deployments
         run: |
           kubectl rollout status deployment/django-backend --timeout=300s
