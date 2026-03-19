@@ -19,8 +19,6 @@ import {
   Navigation, Eye, BarChart2,
 } from 'lucide-react'
 import { CATEGORY_MAP, STATUS_MAP, CATEGORIES, STATUSES, CREW_MAP } from '../utils/constants'
-import { useTheme } from '../contexts/ThemeContext'
-import { mapStylesForTheme } from '../utils/googleMapStyles'
 
 const DEFAULT_CENTER = { lat: -36.8485, lng: 174.7633 }
 const DEFAULT_ZOOM   = 12
@@ -34,7 +32,7 @@ function loadGoogleMaps() {
     const cb = `_gmaps_cb_${Date.now()}`
     window[cb] = () => resolve(window.google.maps)
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=${cb}&loading=async`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=${cb}`
     script.async = true
     script.onerror = reject
     document.head.appendChild(script)
@@ -107,7 +105,6 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
   const mapInstanceRef = useRef(null)
   const markersRef     = useRef([])
   const infoWindowRef  = useRef(null)
-  const { theme } = useTheme()
 
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [activeCategory, setActiveCategory] = useState('all')
@@ -116,11 +113,8 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
   const [showUnmapped,   setShowUnmapped]   = useState(false)
   const [changingStatus, setChangingStatus] = useState(false)
 
-  // Allow 0 and string values; only treat null/undefined as "missing GPS".
-  const mappedTickets    = tickets
-    .filter(t => t.lat != null && t.lng != null)
-    .map(t => ({ ...t, lat: Number(t.lat), lng: Number(t.lng) }))
-  const unmappedTickets  = tickets.filter(t => t.lat == null || t.lng == null)
+  const mappedTickets    = tickets.filter(t => t.lat && t.lng)
+  const unmappedTickets  = tickets.filter(t => !t.lat || !t.lng)
   const escalatedCount   = mappedTickets.filter(t => t.escalated).length
   const mappedCategories = [...new Set(mappedTickets.map(t => t.category))]
 
@@ -133,53 +127,60 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
   // Init map
   useEffect(() => {
     if (!mapRef.current || !API_KEY) return
-    let isMounted = true
     loadGoogleMaps().then((maps) => {
-      if (!isMounted || mapInstanceRef.current) return
+      if (mapInstanceRef.current) return
       const map = new maps.Map(mapRef.current, {
-        center:            DEFAULT_CENTER,
-        zoom:              DEFAULT_ZOOM,
-        mapTypeId:         'roadmap',
-        styles:            mapStylesForTheme(theme),
+        center:    DEFAULT_CENTER,
+        zoom:      DEFAULT_ZOOM,
+        mapTypeId: 'roadmap',
+        styles: [
+          { elementType: 'geometry',          stylers: [{ color: '#0e1c2e' }] },
+          { elementType: 'labels.text.fill',  stylers: [{ color: '#8ba8c4' }] },
+          { elementType: 'labels.text.stroke',stylers: [{ color: '#0c1829' }] },
+          { featureType: 'road',              elementType: 'geometry',       stylers: [{ color: '#1a3050' }] },
+          { featureType: 'road',              elementType: 'geometry.stroke',stylers: [{ color: '#0c1829' }] },
+          { featureType: 'road.highway',      elementType: 'geometry',       stylers: [{ color: '#1e4080' }] },
+          { featureType: 'water',             elementType: 'geometry',       stylers: [{ color: '#0a1628' }] },
+          { featureType: 'poi',               elementType: 'geometry',       stylers: [{ color: '#0e2040' }] },
+          { featureType: 'transit',           elementType: 'geometry',       stylers: [{ color: '#122040' }] },
+          { featureType: 'administrative',    elementType: 'geometry',       stylers: [{ color: '#1a3050' }] },
+          { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#a8c4da' }] },
+        ],
         disableDefaultUI:  false,
         zoomControl:       true,
         streetViewControl: false,
         mapTypeControl:    false,
         fullscreenControl: true,
       })
+
       infoWindowRef.current  = new maps.InfoWindow()
       mapInstanceRef.current = map
+
+      // Force resize after layout settles so the map fills its container
+      // correctly on first render (fixes blank map until theme toggle)
+      setTimeout(() => {
+        maps.event.trigger(map, 'resize')
+        map.setCenter(DEFAULT_CENTER)
+      }, 150)
     })
+
     return () => {
-      isMounted = false
+      markersRef.current.forEach(m => m.setMap(null))
       markersRef.current = []
       mapInstanceRef.current = null
     }
   }, [])
 
-  // Apply theme styles live when the user toggles dark/light.
-  useEffect(() => {
-    if (!mapInstanceRef.current) return
-    mapInstanceRef.current.setOptions({ styles: mapStylesForTheme(theme) })
-  }, [theme])
-
   // Map type switch
   useEffect(() => {
     if (!mapInstanceRef.current) return
-    const map = mapInstanceRef.current
-    loadGoogleMaps().then(() => {
-      if (!mapInstanceRef.current || mapInstanceRef.current !== map) return
-      map.setMapTypeId(mapType)
-    })
+    loadGoogleMaps().then(() => mapInstanceRef.current.setMapTypeId(mapType))
   }, [mapType])
 
   // Render markers
   useEffect(() => {
     if (!mapInstanceRef.current) return
-    const map = mapInstanceRef.current
     loadGoogleMaps().then((maps) => {
-      // If the map was cleaned up while the Maps script was loading, bail out.
-      if (!mapInstanceRef.current || mapInstanceRef.current !== map) return
       markersRef.current.forEach(m => m.setMap(null))
       markersRef.current = []
       filteredTickets.forEach((ticket) => {
@@ -188,7 +189,7 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
         const icon = makeSvgIcon(cat.color, stat.color, ticket.escalated)
         const marker = new maps.Marker({
           position: { lat: ticket.lat, lng: ticket.lng },
-          map,
+          map:      mapInstanceRef.current,
           title:    ticket.title,
           icon: {
             url:        icon.url,
@@ -205,10 +206,9 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
       if (markersRef.current.length > 0) {
         const bounds = new maps.LatLngBounds()
         markersRef.current.forEach(m => bounds.extend(m.getPosition()))
-        map.fitBounds(bounds)
-        maps.event.addListenerOnce(map, 'bounds_changed', () => {
-          if (!mapInstanceRef.current || mapInstanceRef.current !== map) return
-          if (map.getZoom() > 15) map.setZoom(15)
+        mapInstanceRef.current.fitBounds(bounds)
+        maps.event.addListenerOnce(mapInstanceRef.current, 'bounds_changed', () => {
+          if (mapInstanceRef.current.getZoom() > 15) mapInstanceRef.current.setZoom(15)
         })
       }
     })
@@ -223,12 +223,10 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
 
   const fitAll = useCallback(() => {
     if (!mapInstanceRef.current || markersRef.current.length === 0) return
-    const map = mapInstanceRef.current
     loadGoogleMaps().then((maps) => {
-      if (!mapInstanceRef.current || mapInstanceRef.current !== map) return
       const bounds = new maps.LatLngBounds()
       markersRef.current.forEach(m => bounds.extend(m.getPosition()))
-      map.fitBounds(bounds)
+      mapInstanceRef.current.fitBounds(bounds)
     })
   }, [])
 
@@ -304,11 +302,8 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
 
       {/* Map + detail panel */}
       <div className="flex gap-3" style={{ minHeight: 480 }}>
-        <div className="flex-1 rounded-2xl overflow-hidden relative"
+        <div ref={mapRef} className="flex-1 rounded-2xl overflow-hidden"
           style={{ border: '1px solid var(--card-border)', minHeight: 440, position: 'relative' }}>
-          {/* Important: keep Google Maps container free of React-managed children.
-              Google mutates/clears the container DOM, which can break React deletion. */}
-          <div ref={mapRef} className="absolute inset-0" />
           {!API_KEY && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'var(--card-bg)' }}>
               <p className="text-sm text-rose-400">VITE_GOOGLE_MAPS_API_KEY is not set</p>
@@ -372,7 +367,8 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
             <div className="flex flex-col gap-2">
               <InfoRow icon={<MapPin size={11} />} label="Location" value={selectedTicket.location_description} />
               {selectedTicket.lat && selectedTicket.lng && (
-                <InfoRow icon={<MapPin size={11} />} label="Coords" value={`${selectedTicket.lat.toFixed(5)}, ${selectedTicket.lng.toFixed(5)}`} />
+                <InfoRow icon={<MapPin size={11} />} label="Coords"
+                  value={`${selectedTicket.lat.toFixed(5)}, ${selectedTicket.lng.toFixed(5)}`} />
               )}
               <InfoRow icon={<Users size={11} />} label="Reporter"
                 value={[selectedTicket.reporter_display || selectedTicket.reporter_name, selectedTicket.reporter_email].filter(Boolean).join(' · ')} />
@@ -456,7 +452,8 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--divider)' }}>
                     {['ID', 'Title', 'Category', 'Status'].map(h => (
-                      <th key={h} className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                      <th key={h} className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider"
+                        style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
