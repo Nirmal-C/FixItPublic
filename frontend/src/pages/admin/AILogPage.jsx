@@ -30,7 +30,7 @@ function formatDateTime(dateStr) {
 function ConfirmClearModal({ onConfirm, onCancel, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div className="glass p-6 rounded-2xl max-w-sm w-full flex flex-col gap-5 animate-slide-up">
+      <div className="glass p-6 rounded-2xl max-w-sm w-full flex flex-col gap-5">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
             <Trash2 size={16} style={{ color: '#ef4444' }} />
@@ -350,7 +350,7 @@ export default function AILogPage() {
       {/* Feedback banner */}
       {statusMsg && (
         <div
-          className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm animate-slide-up"
+          className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm"
           style={{
             background: statusMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
             border: `1px solid ${statusMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
