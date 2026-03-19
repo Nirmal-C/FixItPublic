@@ -544,3 +544,55 @@ class AILogBackfillView(generics.GenericAPIView):
             'detail': f'Queued GPT-4o analysis for {count} ticket(s). Results will appear shortly.',
             'queued': count,
         })
+
+
+class AILogRegenerateView(generics.GenericAPIView):
+    """
+    POST /api/ai-log/regenerate/
+    Re-runs GPT-4o analysis on ALL tickets, overwriting any existing AILog entries.
+    Use this to refresh decisions after changing the system prompt or model.
+    Restricted to council admins and above.
+    """
+    permission_classes = [IsCouncilAdmin]
+
+    def post(self, request, *args, **kwargs):
+        from .models import MaintenanceTicket
+        from .signals import _analyse_and_save
+        import threading
+
+        tickets = MaintenanceTicket.objects.all()
+        count   = tickets.count()
+
+        if count == 0:
+            return Response({'detail': 'No tickets to analyse.', 'queued': 0})
+
+        for ticket in tickets:
+            thread = threading.Thread(
+                target=_analyse_and_save,
+                args=(ticket.pk,),
+                daemon=True,
+            )
+            thread.start()
+
+        return Response({
+            'detail': f'Queued GPT-4o re-analysis for all {count} ticket(s). Results will appear shortly.',
+            'queued': count,
+        })
+
+
+class AILogClearView(generics.GenericAPIView):
+    """
+    DELETE /api/ai-log/clear/
+    Deletes all AILog entries from the database.
+    Tickets are not affected — only the AI decision records are removed.
+    Restricted to superusers only given the destructive nature of the action.
+    """
+    permission_classes = [IsSuperuser]
+
+    def delete(self, request, *args, **kwargs):
+        from .models import AILog
+        count, _ = AILog.objects.all().delete()
+        return Response({
+            'detail': f'Cleared {count} AI log entry(s). Tickets are untouched.',
+            'deleted': count,
+        })
