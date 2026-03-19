@@ -141,6 +141,8 @@ export const statsApi = {
 export default apiClient
 
 export const aiLogApi = {
+  regenerate: () => apiClient.post('/api/ai-log/regenerate/'),
+  clear:      () => apiClient.delete('/api/ai-log/clear/'),
   backfill: () => apiClient.post('/api/ai-log/backfill/'),
   list: () => apiClient.get('/api/ai-log/'),
 }

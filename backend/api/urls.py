@@ -83,3 +83,9 @@ from .views import AILogBackfillView
 urlpatterns += [
     path('ai-log/backfill/', AILogBackfillView.as_view(), name='ai-log-backfill'),
 ]
+
+from .views import AILogRegenerateView, AILogClearView
+urlpatterns += [
+    path('ai-log/regenerate/', AILogRegenerateView.as_view(), name='ai-log-regenerate'),
+    path('ai-log/clear/',      AILogClearView.as_view(),      name='ai-log-clear'),
+]
