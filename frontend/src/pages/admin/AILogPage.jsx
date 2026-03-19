@@ -1,125 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { BrainCircuit, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X } from 'lucide-react'
+import {
+  BrainCircuit, ChevronDown, ChevronUp, CheckCircle2,
+  AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X, AlertCircle, Sparkles,
+} from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
-import { CATEGORY_MAP, CREWS, CREW_MAP } from '../../utils/constants'
-import { requestsApi } from '../../api/client'
+import { CATEGORY_MAP, CREW_MAP } from '../../utils/constants'
+import { aiLogApi } from '../../api/client'
 
-// Maps assigned_crew id → human-readable team name
-const crewLabel = (crewId) =>
-  CREW_MAP[crewId]?.label || crewId || 'Unknown Crew'
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Category-specific reasoning templates used to generate realistic mock AI entries.
-// The crew and ticket info are injected dynamically from real ticket data.
-const REASONING_TEMPLATES = {
-  streetlight: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. Streetlight outage detected — priority set based on surrounding foot traffic.`,
-    confidence: 0.89,
-    status: 'success',
-    reasoning: [
-      `Category: Streetlight / Electrical → ${crewLabel(t.assigned_crew)} specialty`,
-      'No prior unresolved streetlight report at this location within 14 days',
-      'Foot-traffic score for location: moderate — standard SLA (48 hrs) applied',
-      'Crew availability confirmed via find_nearest_crew() tool call',
-    ],
-  }),
-  road: (t) => ({
-    decision: `Escalated to Senior Engineer — pothole depth likely exceeds 8 cm safety threshold. ${crewLabel(t.assigned_crew)} standing by.`,
-    confidence: 0.87,
-    status: 'escalated',
-    reasoning: [
-      `Category: Road / Pothole → ${crewLabel(t.assigned_crew)}`,
-      'Reported dimensions suggest depth > 8 cm — exceeds Auckland Transport threshold',
-      'Escalation rule triggered: deep pothole on arterial road → senior engineer review',
-      'Ticket priority boosted from Normal to Critical',
-    ],
-  }),
-  footpath: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. Flagged as accessibility-critical.`,
-    confidence: 0.94,
-    status: 'success',
-    reasoning: [
-      `Category: Footpath → ${crewLabel(t.assigned_crew)} specialty`,
-      'Description analysed for accessibility keywords — high-priority flag applied',
-      'Priority boosted from Normal to High',
-      'Citizen notification queued: ETA 2 business days',
-    ],
-  }),
-  park: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. Playground/park safety issue — same-day inspection scheduled.`,
-    confidence: 0.92,
-    status: 'success',
-    reasoning: [
-      `Category: Park / Green Space → ${crewLabel(t.assigned_crew)}`,
-      'Safety hazard detected in description — child-safety flag raised',
-      'Park usage score: high — same-day inspection SLA triggered',
-      'Crew dispatched with safety equipment checklist',
-    ],
-  }),
-  graffiti: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. ${t.description?.toLowerCase().includes('offensive') ? 'Offensive content flag raised — priority escalated.' : 'Standard removal SLA applied.'}`,
-    confidence: 0.97,
-    status: 'success',
-    reasoning: [
-      `Category: Graffiti → ${crewLabel(t.assigned_crew)}`,
-      t.description?.toLowerCase().includes('offensive')
-        ? 'Offensive content detected → priority escalated to High, same-day SLA'
-        : 'No offensive content detected → standard 48-hour SLA',
-      'Public visibility score computed from location footfall data',
-      'Removal kit and crew confirmed available',
-    ],
-  }),
-  bus_stop: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. Shelter infrastructure damage — safety cordon recommended.`,
-    confidence: 0.88,
-    status: t.escalated ? 'escalated' : 'success',
-    reasoning: [
-      `Category: Bus Stop / Shelter → ${crewLabel(t.assigned_crew)}`,
-      'Structural damage detected — safety advisory issued to AT HOP operations',
-      'Weather exposure risk: high — expedited response',
-      'Crew dispatched with temporary barriers',
-    ],
-  }),
-  public_toilet: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)}. Public health priority applied.`,
-    confidence: 0.85,
-    status: 'success',
-    reasoning: [
-      `Category: Public Toilet → ${crewLabel(t.assigned_crew)}`,
-      'Public health risk classification: moderate',
-      'Facility usage hours indicate peak-time impact — priority elevated',
-      'Maintenance crew and hygiene supplies confirmed',
-    ],
-  }),
-  other: (t) => ({
-    decision: `Assigned to ${crewLabel(t.assigned_crew)} for general assessment.`,
-    confidence: 0.62,
-    status: 'success',
-    reasoning: [
-      `Category: Other / Unclassified → ${crewLabel(t.assigned_crew)} (general maintenance)`,
-      'No specialist crew match — default assignment applied',
-      'Confidence below 0.75 — human dispatcher notified for review',
-      'Ticket flagged for manual crew re-assignment if needed',
-    ],
-  }),
-}
-
-function generateAIEntry(ticket, index) {
-  const template = REASONING_TEMPLATES[ticket.category] || REASONING_TEMPLATES.other
-  const aiData = template(ticket)
-  return {
-    id:        `ai-${String(ticket.id).padStart(3, '0')}`,
-    ticketId:  ticket.id,
-    timestamp: ticket.created_at
-      ? new Date(new Date(ticket.created_at).getTime() + (index + 1) * 15 * 60 * 1000).toISOString()
-      : new Date().toISOString(),
-    category: ticket.category,
-    ...aiData,
-  }
-}
+const crewLabel = (crewId) => CREW_MAP[crewId]?.label || crewId || 'Unknown Crew'
 
 const AI_STATUS = {
   success:   { label: 'Success',   color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  Icon: CheckCircle2 },
   escalated: { label: 'Escalated', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)',  Icon: AlertTriangle },
+  error:     { label: 'Error',     color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.4)',   Icon: AlertCircle },
 }
 
 function formatDateTime(dateStr) {
@@ -129,24 +24,26 @@ function formatDateTime(dateStr) {
   }).format(new Date(dateStr))
 }
 
+// ── Single log entry card ─────────────────────────────────────────────────────
+
 function AILogEntry({ entry }) {
   const [expanded, setExpanded] = useState(false)
-  const aiStyle = AI_STATUS[entry.status] || AI_STATUS.escalated
+
+  const aiStyle  = AI_STATUS[entry.status] || AI_STATUS.success
   const { Icon: AiIcon } = aiStyle
-  const cat = CATEGORY_MAP[entry.category] || { label: entry.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)', icon: 'HelpCircle' }
-  const CatIcon = LucideIcons[cat.icon] || LucideIcons.HelpCircle
-  const confidencePct = Math.round(entry.confidence * 100)
+  const cat      = CATEGORY_MAP[entry.category] || { label: entry.category, color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)', icon: 'HelpCircle' }
+  const CatIcon  = LucideIcons[cat.icon] || LucideIcons.HelpCircle
+  const confidencePct = Math.round((entry.confidence || 0) * 100)
 
   return (
     <div className="glass p-5 flex flex-col gap-4">
-      {/* Entry header */}
+
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-semibold text-indigo-400">
-            Ticket #{entry.ticketId}
-          </span>
+          <span className="text-xs font-semibold text-indigo-400">Ticket #{entry.ticket_id}</span>
           <span className="text-xs text-slate-500">·</span>
-          <span className="text-xs text-slate-500">{formatDateTime(entry.timestamp)}</span>
+          <span className="text-xs text-slate-500">{formatDateTime(entry.created_at)}</span>
         </div>
         <span
           className="badge border text-xs shrink-0 inline-flex items-center gap-1"
@@ -157,7 +54,12 @@ function AILogEntry({ entry }) {
         </span>
       </div>
 
-      {/* Decision text */}
+      {/* GPT-4o one-line summary */}
+      {entry.summary && (
+        <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>{entry.summary}</p>
+      )}
+
+      {/* Decision */}
       <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
         {entry.decision}
       </p>
@@ -183,34 +85,40 @@ function AILogEntry({ entry }) {
         </div>
       </div>
 
-      {/* Collapsible reasoning steps */}
-      <div>
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="btn-ghost flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 -ml-2"
-        >
-          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          {expanded ? 'Hide' : 'Show'} reasoning ({entry.reasoning.length} steps)
-        </button>
+      {/* Collapsible GPT-4o reasoning steps */}
+      {entry.reasoning?.length > 0 && (
+        <div>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="btn-ghost flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 -ml-2"
+          >
+            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            {expanded ? 'Hide' : 'Show'} reasoning ({entry.reasoning.length} steps)
+          </button>
+          {expanded && (
+            <ul className="mt-2 flex flex-col gap-2">
+              {entry.reasoning.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: aiStyle.color }} />
+                  {step}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-        {expanded && (
-          <ul className="mt-2 flex flex-col gap-2">
-            {entry.reasoning.map((step, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
-                <span
-                  className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ background: aiStyle.color }}
-                />
-                {step}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Footer: model tag + category */}
-      <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--divider)' }}>
-        <span className="text-xs text-slate-600 font-mono">gpt-4o</span>
+      {/* Footer — model + crew + category */}
+      <div className="flex items-center justify-between pt-1 flex-wrap gap-2" style={{ borderTop: '1px solid var(--divider)' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-600 font-mono">{entry.model || 'gpt-4o'}</span>
+          {entry.assigned_crew && (
+            <>
+              <span className="text-slate-700">·</span>
+              <span className="text-xs text-slate-500">{crewLabel(entry.assigned_crew)}</span>
+            </>
+          )}
+        </div>
         <span
           className="badge border text-xs inline-flex items-center gap-1"
           style={{ color: cat.color, background: cat.bgColor, borderColor: cat.color + '40' }}
@@ -223,23 +131,28 @@ function AILogEntry({ entry }) {
   )
 }
 
-export default function AILogPage() {
-  const [aiLog, setAiLog] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [refreshing, setRefreshing] = useState(false)
+// ── Page ──────────────────────────────────────────────────────────────────────
 
-  // Fetch real tickets and generate AI entries from them.
+export default function AILogPage() {
+  const [aiLog,          setAiLog]          = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [fetchError,     setFetchError]     = useState(false)
+  const [statusFilter,   setStatusFilter]   = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [refreshing,     setRefreshing]     = useState(false)
+  // Backfill state — tracks the "Analyse All" button
+  const [backfilling,    setBackfilling]    = useState(false)
+  const [backfillMsg,    setBackfillMsg]    = useState(null)  // {type: 'success'|'error', text}
+
+  // Fetch real AILog entries written by signals.py after GPT-4o analysis
   const loadLog = useCallback(async () => {
     setLoading(true)
     setFetchError(false)
     try {
-      const res = await requestsApi.list({ page_size: 999 })
-      const tickets = Array.isArray(res.data) ? res.data : (res.data.results || [])
-      setAiLog(tickets.map((t, i) => generateAIEntry(t, i)))
-    } catch (err) {
+      const res     = await aiLogApi.list()
+      const entries = Array.isArray(res.data) ? res.data : (res.data.results || [])
+      setAiLog(entries)
+    } catch {
       setAiLog([])
       setFetchError(true)
     } finally {
@@ -254,59 +167,108 @@ export default function AILogPage() {
     loadLog().finally(() => setRefreshing(false))
   }
 
-  // Derive available categories from the current log
+  // Trigger GPT-4o analysis on all tickets that don't have an AILog entry yet.
+  // The backend queues them in background threads and returns immediately.
+  // We poll once after 8 seconds to pick up the results.
+  const handleBackfill = async () => {
+    setBackfilling(true)
+    setBackfillMsg(null)
+    try {
+      const res = await aiLogApi.backfill()
+      const queued = res.data?.queued ?? 0
+      if (queued === 0) {
+        setBackfillMsg({ type: 'success', text: 'All tickets are already analysed.' })
+      } else {
+        setBackfillMsg({ type: 'success', text: `Analysing ${queued} ticket(s) — results will appear shortly.` })
+        // Poll after 8 seconds to pick up the first wave of results
+        setTimeout(() => { loadLog() }, 8000)
+      }
+    } catch {
+      setBackfillMsg({ type: 'error', text: 'Backfill failed. Make sure OPENAI_API_KEY is set.' })
+    } finally {
+      setBackfilling(false)
+    }
+  }
+
+  // Derive filter options from actual data
   const categories = useMemo(() => {
-    const seen = new Set(aiLog.map((e) => e.category))
+    const seen = new Set(aiLog.map((e) => e.category).filter(Boolean))
     return ['all', ...seen]
   }, [aiLog])
 
   const filtered = useMemo(() => aiLog.filter((e) => {
-    if (statusFilter !== 'all' && e.status !== statusFilter) return false
+    if (statusFilter   !== 'all' && e.status   !== statusFilter)   return false
     if (categoryFilter !== 'all' && e.category !== categoryFilter) return false
     return true
   }), [aiLog, statusFilter, categoryFilter])
 
-  // Summary stats
-  const total      = aiLog.length
-  const successes  = aiLog.filter((e) => e.status === 'success').length
-  const avgConf    = total ? Math.round(aiLog.reduce((s, e) => s + e.confidence, 0) / total * 100) : 0
+  // Stats derived from real data
+  const total       = aiLog.length
+  const successes   = aiLog.filter((e) => e.status === 'success').length
+  const avgConf     = total ? Math.round(aiLog.reduce((s, e) => s + (e.confidence || 0), 0) / total * 100) : 0
   const successRate = total ? Math.round((successes / total) * 100) : 0
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
 
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
             AI Reasoning Log
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Decisions made by the agentic AI for each incoming ticket
+            Real GPT-4o decisions made for each incoming ticket
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={loading || refreshing}
-          className="btn-secondary flex items-center gap-2 text-xs px-3 py-2 shrink-0"
-        >
-          <RefreshCw size={12} className={(loading || refreshing) ? 'animate-spin' : ''} />
-          {(loading || refreshing) ? 'Syncing…' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Analyse All — backfills every ticket without an AILog entry */}
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling || loading}
+            className="btn-secondary flex items-center gap-2 text-xs px-3 py-2"
+            title="Run GPT-4o analysis on all tickets that haven't been analysed yet"
+          >
+            <Sparkles size={12} className={backfilling ? 'animate-pulse' : ''} />
+            {backfilling ? 'Analysing…' : 'Analyse All'}
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={loading || refreshing}
+            className="btn-secondary flex items-center gap-2 text-xs px-3 py-2"
+          >
+            <RefreshCw size={12} className={(loading || refreshing) ? 'animate-spin' : ''} />
+            {(loading || refreshing) ? 'Syncing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
-      {/* Stats row */}
+      {/* Backfill feedback banner */}
+      {backfillMsg && (
+        <div
+          className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm animate-slide-up"
+          style={{
+            background: backfillMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${backfillMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            color: backfillMsg.type === 'success' ? '#10b981' : '#f87171',
+          }}
+        >
+          {backfillMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+          {backfillMsg.text}
+          <button onClick={() => setBackfillMsg(null)} className="ml-auto opacity-60 hover:opacity-100">
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Decisions', value: loading ? '…' : total, icon: BrainCircuit, color: '#6366f1' },
-          { label: 'Success Rate',    value: loading ? '…' : `${successRate}%`, icon: TrendingUp, color: '#10b981' },
-          { label: 'Avg Confidence',  value: loading ? '…' : `${avgConf}%`, icon: Zap, color: '#f59e0b' },
+          { label: 'Total Decisions', value: loading ? '…' : total,             icon: BrainCircuit, color: '#6366f1' },
+          { label: 'Success Rate',    value: loading ? '…' : `${successRate}%`, icon: TrendingUp,   color: '#10b981' },
+          { label: 'Avg Confidence',  value: loading ? '…' : `${avgConf}%`,     icon: Zap,          color: '#f59e0b' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div
-            key={label}
-            className="glass p-4 flex flex-col gap-2"
-            style={{ border: `1px solid ${color}20` }}
-          >
+          <div key={label} className="glass p-4 flex flex-col gap-2" style={{ border: `1px solid ${color}20` }}>
             <div className="flex items-center gap-2">
               <Icon size={13} style={{ color }} />
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
@@ -316,52 +278,39 @@ export default function AILogPage() {
         ))}
       </div>
 
-      {/* Filters — click a pill to activate, click again (or the ✕) to clear */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Filter size={13} className="text-slate-500 shrink-0" />
-
-        {/* Status pills — only non-"all" options; active pill shows ✕ */}
-        {['success', 'escalated'].map((s) => {
+        {['success', 'escalated', 'error'].map((s) => {
           const active = statusFilter === s
           return (
             <button
               key={s}
               onClick={() => setStatusFilter(active ? 'all' : s)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 capitalize flex items-center gap-1.5 ${
-                active
-                  ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
-                  : 'border-white/10 text-slate-500 hover:text-slate-300'
+                active ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300' : 'border-white/10 text-slate-500 hover:text-slate-300'
               }`}
             >
-              {s}
-              {active && <X size={10} />}
+              {s}{active && <X size={10} />}
             </button>
           )
         })}
-
         <div className="w-px h-4 bg-white/10 mx-1" />
-
-        {/* Category pills — derived from current log; active pill shows ✕ */}
         {categories.filter((c) => c !== 'all').map((c) => {
-          const cat = CATEGORY_MAP[c]
+          const cat    = CATEGORY_MAP[c]
           const active = categoryFilter === c
           return (
             <button
               key={c}
               onClick={() => setCategoryFilter(active ? 'all' : c)}
               className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 flex items-center gap-1.5 ${
-                active
-                  ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
-                  : 'border-white/10 text-slate-500 hover:text-slate-300'
+                active ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300' : 'border-white/10 text-slate-500 hover:text-slate-300'
               }`}
             >
-              {cat?.label || c}
-              {active && <X size={10} />}
+              {cat?.label || c}{active && <X size={10} />}
             </button>
           )
         })}
-
-        {/* Clear all — only shown when a filter is active */}
         {(statusFilter !== 'all' || categoryFilter !== 'all') && (
           <button
             onClick={() => { setStatusFilter('all'); setCategoryFilter('all') }}
@@ -372,17 +321,40 @@ export default function AILogPage() {
         )}
       </div>
 
+      {/* API key error banner */}
       {fetchError && (
-        <div
-          className="flex items-start gap-3 p-4 rounded-xl text-sm"
-          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
-        >
-          <Info size={16} className="text-rose-400 shrink-0 mt-0.5" />
-          <p className="text-slate-300">Could not reach the backend — no AI log entries available.</p>
+        <div className="flex items-start gap-3 p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+          <p className="text-slate-300">
+            Could not load AI log entries. Make sure{' '}
+            <code className="mx-1 text-xs bg-white/5 px-1 rounded">OPENAI_API_KEY</code>
+            is set in <code className="text-xs bg-white/5 px-1 rounded">.env</code>.
+          </p>
         </div>
       )}
 
-{/* AI log entries */}
+      {/* Empty state — show Analyse All CTA instead of a dead end */}
+      {!loading && !fetchError && aiLog.length === 0 && (
+        <div className="flex flex-col items-center gap-4 py-16 rounded-2xl text-center" style={{ border: '1px dashed var(--card-border)' }}>
+          <BrainCircuit size={32} className="text-slate-600" />
+          <div>
+            <p className="text-sm text-slate-400 font-medium">No AI decisions yet.</p>
+            <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
+              Run GPT-4o analysis on all existing tickets to populate this log.
+            </p>
+          </div>
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="btn-primary flex items-center gap-2 text-sm px-5 py-2.5"
+          >
+            <Sparkles size={14} className={backfilling ? 'animate-pulse' : ''} />
+            {backfilling ? 'Analysing…' : 'Analyse All Tickets'}
+          </button>
+        </div>
+      )}
+
+      {/* Log entries */}
       {loading ? (
         <div className="flex flex-col gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -393,26 +365,18 @@ export default function AILogPage() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div
-          className="flex flex-col items-center gap-3 py-16 rounded-2xl text-center"
-          style={{ border: '1px dashed var(--card-border)' }}
-        >
+      ) : filtered.length === 0 && aiLog.length > 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 rounded-2xl text-center" style={{ border: '1px dashed var(--card-border)' }}>
           <BrainCircuit size={32} className="text-slate-600" />
           <p className="text-sm text-slate-500">No entries match the selected filters.</p>
-          <button
-            onClick={() => { setStatusFilter('all'); setCategoryFilter('all') }}
-            className="btn-ghost text-xs text-indigo-400 hover:text-indigo-300"
-          >
+          <button onClick={() => { setStatusFilter('all'); setCategoryFilter('all') }} className="btn-ghost text-xs text-indigo-400 hover:text-indigo-300">
             Clear filters
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <p className="text-xs text-slate-600">{filtered.length} of {total} entries</p>
-          {filtered.map((entry) => (
-            <AILogEntry key={entry.id} entry={entry} />
-          ))}
+          {filtered.length > 0 && <p className="text-xs text-slate-600">{filtered.length} of {total} entries</p>}
+          {filtered.map((entry) => <AILogEntry key={entry.id} entry={entry} />)}
         </div>
       )}
     </div>

@@ -37,6 +37,7 @@ jobs:
           push: true
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           tags: |
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/react-frontend:${{ github.sha }}
@@ -46,7 +47,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -82,7 +82,7 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_NAME='${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}' \
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --from-literal=EMAIL_HOST_PASSWORD='${{ secrets.EMAIL_HOST_PASSWORD }}' \
-            --from-literal=VITE_GOOGLE_MAPS_API_KEY='${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}' \
+            --from-literal=OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to AKS

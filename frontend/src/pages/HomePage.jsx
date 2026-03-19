@@ -4,7 +4,7 @@ import {
   Construction, ArrowRight, Building2,
   ShieldCheck, MapPin, Bell, Users, Clock,
   CheckCircle2, Search, AlertCircle, Loader2,
-  ChevronRight, FileText, Phone, Zap, LogIn,
+  ChevronRight, FileText, Phone, Zap, LogIn, KeyRound,
 } from 'lucide-react'
 import { requestsApi, statsApi } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
@@ -236,6 +236,22 @@ export default function HomePage() {
                     Sign In
                   </Link>
                 )}
+              </div>
+
+              {/* Admin portal link — subtle entry point for council staff, keeps them out of the citizen login */}
+              <div className="flex items-center gap-2 pt-1">
+                <div className="h-px flex-1 max-w-[60px]" style={{ background: 'var(--divider)' }} />
+                <Link
+                  to="/admin/login"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded transition-all duration-150"
+                  style={{ color: 'var(--text-muted)', border: '1px solid transparent' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#FFC72C'; e.currentTarget.style.borderColor = 'rgba(255,199,44,0.3)'; e.currentTarget.style.background = 'rgba(255,199,44,0.06)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent' }}
+                >
+                  <KeyRound size={11} />
+                  Council / Admin Sign In
+                </Link>
+                <div className="h-px flex-1 max-w-[60px]" style={{ background: 'var(--divider)' }} />
               </div>
 
               {/* Quick stats strip at the bottom of the hero */}
