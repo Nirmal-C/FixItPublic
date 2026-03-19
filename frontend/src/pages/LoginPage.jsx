@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { User, Lock, AlertCircle, Loader2, Building2, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, AlertCircle, Loader2, Building2, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 import { useToast } from '../components/Toast'
 
@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
+  // Separate flag for the admin-role redirect banner — distinct UI from the generic error
+  const [isAdminError, setIsAdminError] = useState(false)
 
   const { login } = useCitizenAuth()
   const navigate  = useNavigate()
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }))
     setError('')
+    setIsAdminError(false) // clear both error states on input change
   }
 
   const handleSubmit = async (e) => {
@@ -29,12 +32,19 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
+    setIsAdminError(false)
     try {
       await login(form.username.trim(), form.password)
       toast.success(`Welcome back, ${form.username}!`, { title: 'Signed in' })
       navigate(from, { replace: true })
     } catch (err) {
-      setError(err?.userMessage || 'Invalid username or password. Please try again.')
+      if (err?.isAdminRole) {
+        // Admin credentials entered here — show redirect banner instead of generic error
+        setIsAdminError(true)
+        setError('')
+      } else {
+        setError(err?.userMessage || 'Invalid username or password. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -65,6 +75,35 @@ export default function LoginPage() {
               Access your reports and track your submissions
             </p>
           </div>
+
+          {/* Admin-role redirect banner — shown when an admin account is detected on this citizen page */}
+          {isAdminError && (
+            <div
+              className="flex flex-col gap-3 px-4 py-4 rounded-xl text-sm animate-slide-up"
+              style={{ background: 'rgba(255,199,44,0.08)', border: '2px solid rgba(255,199,44,0.45)' }}
+            >
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck size={16} className="shrink-0 mt-0.5" style={{ color: '#FFC72C' }} />
+                <div>
+                  <p className="font-bold" style={{ color: '#FFC72C' }}>Admin account detected</p>
+                  <p className="mt-0.5 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    This account has admin privileges and cannot sign in here. Please use the dedicated Admin Portal to access your dashboard.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/admin/login"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm transition-all duration-150 self-stretch"
+                style={{ background: '#FFC72C', color: '#002040' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#FFD45C'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#FFC72C'}
+              >
+                <ShieldCheck size={14} />
+                Go to Admin Sign In
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div
