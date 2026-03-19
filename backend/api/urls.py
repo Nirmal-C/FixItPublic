@@ -73,3 +73,13 @@ urlpatterns = [
     path('requests/<int:pk>/assign/',        TicketAssignView.as_view(),       name='ticket-assign'),
     path('requests/<int:pk>/delete/',        TicketDeleteView.as_view(),       name='ticket-delete'),
 ]
+
+from .views import AILogListView
+urlpatterns += [
+    path('ai-log/', AILogListView.as_view(), name='ai-log'),
+]
+
+from .views import AILogBackfillView
+urlpatterns += [
+    path('ai-log/backfill/', AILogBackfillView.as_view(), name='ai-log-backfill'),
+]
