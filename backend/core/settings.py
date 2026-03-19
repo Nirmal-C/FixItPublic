@@ -142,3 +142,6 @@ SITE_URL = os.environ.get('SITE_URL', 'https://fixitpublic.com')
 
 # ── 10. Misc ───────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# ── OpenAI ────────────────────────────────────────────────────────────────────
+# Used by signals.py to call GPT-4o on every new ticket creation
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
