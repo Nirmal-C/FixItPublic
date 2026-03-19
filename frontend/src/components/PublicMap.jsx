@@ -11,6 +11,7 @@ import { mapStylesForTheme } from '../utils/googleMapStyles'
 const DEFAULT_CENTER = { lat: -36.8485, lng: 174.7633 }
 const DEFAULT_ZOOM = 13
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+console.log(API_KEY)
 
 let gmapsReady = null
 function loadGoogleMaps() {
