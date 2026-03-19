@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown, Bell, BellOff } from 'lucide-react'
+import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown, Bell, BellOff, LayoutDashboard } from 'lucide-react'
 import { NAV_LINKS } from '../utils/constants'
 import { useTheme } from '../contexts/ThemeContext'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
@@ -139,6 +139,13 @@ export default function Navbar() {
                     className="absolute right-0 top-full mt-2 w-56 rounded-xl py-1 z-50"
                     style={{ background: '#001E3C', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
                   >
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <LayoutDashboard size={13} /> My Dashboard
+                    </Link>
                     <Link
                       to="/track"
                       onClick={() => setUserMenuOpen(false)}

@@ -5,7 +5,7 @@ import {
   RefreshCw, BrainCircuit, ArrowRight,
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
-import { requestsApi } from '../../api/client'
+import { requestsApi, statsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
 import { CATEGORY_MAP } from '../../utils/constants'
 import AdminMap from '../../components/AdminMap'
@@ -25,21 +25,32 @@ const STAT_CARDS = [
   { key: 'closed',      label: 'Closed',      icon: XCircle,      color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
 ]
 
+const CREW_LABELS = {
+  'crew-alpha':   'Alpha — Roads',
+  'crew-bravo':   'Bravo — Electrical',
+  'crew-charlie': 'Charlie — Parks',
+  'crew-delta':   'Delta — Graffiti',
+  'crew-echo':    'Echo — General',
+}
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
+  const [adminStats, setAdminStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
   const navigate = useNavigate()
 
-  // Load all tickets from the API. DRF can return either a plain array or a
-  // paginated {results:[]} object, so we handle both shapes.
   const fetchTickets = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
     try {
-      const res = await requestsApi.list({ page_size: 999 })
-      const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
+      const [ticketsRes, statsRes] = await Promise.all([
+        requestsApi.list({ page_size: 999 }),
+        statsApi.admin(),
+      ])
+      const data = Array.isArray(ticketsRes.data) ? ticketsRes.data : (ticketsRes.data.results || [])
       setTickets(data)
+      setAdminStats(statsRes.data)
     } catch (err) {
       setFetchError(err?.userMessage || 'Could not reach the backend. Check your connection.')
       setTickets([])
@@ -263,6 +274,100 @@ export default function DashboardPage() {
           </div>
         )
       })()}
+
+      {/* Advanced analytics */}
+      {adminStats && (
+        <>
+          {/* SLA summary strip */}
+          <div className="glass p-4 flex flex-wrap gap-4 items-center justify-between">
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>SLA Status</span>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-emerald-400" />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-bold text-emerald-400">{adminStats.sla_stats?.on_time ?? '—'}</span> on-time
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-rose-400" />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-bold text-rose-400">{adminStats.sla_stats?.overdue ?? '—'}</span> overdue
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Wrench size={14} className="text-indigo-400" />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-bold text-indigo-400">{adminStats.resolution_rate_pct ?? '—'}%</span> resolved within 72 h
+                </span>
+              </div>
+            </div>
+            {(adminStats.sla_stats?.overdue > 0) && (
+              <span className="text-xs text-rose-400 font-medium">
+                ⚠ {adminStats.sla_stats.overdue} ticket{adminStats.sla_stats.overdue !== 1 ? 's' : ''} past SLA
+              </span>
+            )}
+          </div>
+
+          {/* Crew performance table */}
+          {adminStats.crew_stats?.length > 0 && (
+            <div className="glass p-5 flex flex-col gap-4">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Crew Performance</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--divider)' }}>
+                      {['Team', 'Tickets', 'Resolved', 'Avg Resolution'].map((h) => (
+                        <th key={h} className="text-left pb-2 pr-4 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminStats.crew_stats.map((c) => (
+                      <tr key={c.crew} style={{ borderBottom: '1px solid var(--divider)' }}>
+                        <td className="py-2 pr-4 font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {CREW_LABELS[c.crew] || c.crew}
+                        </td>
+                        <td className="py-2 pr-4 text-indigo-400">{c.ticket_count}</td>
+                        <td className="py-2 pr-4 text-emerald-400">{c.resolved_count}</td>
+                        <td className="py-2 pr-4" style={{ color: 'var(--text-secondary)' }}>
+                          {c.avg_resolution_hours != null ? `${c.avg_resolution_hours} h` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 30-day trend bar chart (pure CSS) */}
+          {adminStats.daily_trend?.length > 0 && (() => {
+            const maxCount = Math.max(...adminStats.daily_trend.map((d) => d.count), 1)
+            return (
+              <div className="glass p-5 flex flex-col gap-4">
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>30-Day Submission Trend</h3>
+                <div className="flex items-end gap-0.5 h-20 overflow-x-auto">
+                  {adminStats.daily_trend.map((d) => (
+                    <div
+                      key={d.date}
+                      className="flex-shrink-0 rounded-t-sm transition-all duration-200 hover:opacity-80 cursor-default"
+                      style={{
+                        width: '10px',
+                        height: `${Math.max(4, (d.count / maxCount) * 100)}%`,
+                        background: 'rgba(99,102,241,0.7)',
+                      }}
+                      title={`${d.date}: ${d.count} ticket${d.count !== 1 ? 's' : ''}`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Hover bars for daily counts · peak: {maxCount} tickets
+                </p>
+              </div>
+            )
+          })()}
+        </>
+      )}
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">

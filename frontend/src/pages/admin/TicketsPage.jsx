@@ -138,6 +138,15 @@ function TicketModal({ ticket, onClose }) {
                   <AlertTriangle size={11} /> Escalated
                 </span>
               )}
+              {ticket.cultural_flag && (
+                <span
+                  className="badge border text-xs inline-flex items-center gap-1"
+                  style={{ color: '#fbbf24', background: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.4)' }}
+                  title={ticket.cultural_site || 'Wāhi Tapu zone'}
+                >
+                  🌿 Wāhi Tapu
+                </span>
+              )}
             </div>
 
             {/* Two-column layout */}
@@ -554,8 +563,11 @@ export default function TicketsPage() {
                       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = '' }}
                     >
                       <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{t.id}</td>
-                      <td className="px-4 py-3 text-sm font-medium max-w-[180px] truncate" style={{ color: 'var(--text-primary)' }}>
-                        {t.title}
+                      <td className="px-4 py-3 text-sm font-medium max-w-[200px]" style={{ color: 'var(--text-primary)' }}>
+                        <span className="truncate block">{t.title}</span>
+                        {t.cultural_flag && (
+                          <span className="text-yellow-400 text-xs" title={t.cultural_site || 'Wāhi Tapu zone'}>🌿 Wāhi Tapu</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
                         <span

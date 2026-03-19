@@ -14,6 +14,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import AnonRateThrottle
 
 from .models import MaintenanceTicket, CATEGORY_CREW_MAP
+from .utils import extract_gps_exif
 from .serializers import (
     RegisterSerializer, UserProfileSerializer,
     AdminUserSerializer, CreateAdminSerializer,
@@ -282,10 +283,64 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return qs.order_by(ordering)
 
     def perform_create(self, serializer):
-        """Auto-assign crew from category; link authenticated reporter."""
-        category  = self.request.data.get('category', 'other')
+        """Auto-assign crew from category; check spatial dupe; extract EXIF GPS if not supplied."""
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        category = self.request.data.get('category', 'other')
         auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
-        ticket    = serializer.save(assigned_crew=auto_crew)
+
+        # Spatial deduplication — reject if an open ticket of the same category
+        # already exists within 50 m of the submitted coordinates.
+        try:
+            lat = float(self.request.data.get('lat')) if self.request.data.get('lat') else None
+            lng = float(self.request.data.get('lng')) if self.request.data.get('lng') else None
+        except (TypeError, ValueError):
+            lat = lng = None
+
+        if lat is not None and lng is not None:
+            duplicate = MaintenanceTicket.find_nearby_duplicate(category, lat, lng)
+            if duplicate:
+                raise DRFValidationError({
+                    'duplicate': True,
+                    'existing_id': duplicate.pk,
+                    'detail': (
+                        f'A similar {category} issue (#{duplicate.pk}) has already been '
+                        'reported within 50 m of this location and is still open.'
+                    ),
+                })
+
+        ticket = serializer.save(assigned_crew=auto_crew)
+
+        # Handle direct-to-cloud blob paths — assign blob names to photo fields
+        # when the frontend has already uploaded files directly to Azure Storage.
+        photo_paths = self.request.data.getlist('photo_paths') if hasattr(
+            self.request.data, 'getlist'
+        ) else self.request.data.get('photo_paths', [])
+        if isinstance(photo_paths, str):
+            photo_paths = [photo_paths]
+        if photo_paths:
+            photo_field_names = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
+            update_photo_fields = []
+            for i, blob_name in enumerate(photo_paths[:5]):
+                if blob_name:
+                    field_name = photo_field_names[i]
+                    getattr(ticket, field_name).name = blob_name
+                    update_photo_fields.append(field_name)
+            if update_photo_fields:
+                ticket.save(update_fields=update_photo_fields)
+
+        # If the citizen didn't provide GPS coordinates, try to read them from
+        # EXIF metadata embedded in the uploaded photos.
+        if ticket.lat is None or ticket.lng is None:
+            for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
+                photo_field = getattr(ticket, field_name)
+                if photo_field:
+                    coords = extract_gps_exif(photo_field)
+                    if coords:
+                        ticket.lat, ticket.lng = coords
+                        ticket.save(update_fields=['lat', 'lng', 'location'])
+                        break
+
         send_ticket_confirmation(ticket)
 
 
@@ -414,9 +469,15 @@ def admin_stats(request):
     """
     GET /api/admin/stats/
     Detailed breakdown for the admin dashboard — not exposed publicly.
-    Returns counts by status, category, and crew plus escalation and GPS coverage.
+    Returns counts by status, category, and crew plus escalation, GPS coverage,
+    crew performance, SLA stats, and 30-day daily trend.
     """
+    from django.db.models import Avg, F, ExpressionWrapper, DurationField, Case, When, IntegerField
+    from django.utils import timezone as tz
+    import datetime
+
     all_tickets = MaintenanceTicket.objects.all()
+    now = tz.now()
 
     by_status = dict(
         all_tickets.values('status').annotate(n=Count('id')).values_list('status', 'n')
@@ -440,6 +501,71 @@ def admin_stats(request):
     mapped_count   = all_tickets.exclude(lat__isnull=True).exclude(lng__isnull=True).count()
     unmapped_count = all_tickets.filter(Q(lat__isnull=True) | Q(lng__isnull=True)).count()
 
+    # ── Crew performance ──────────────────────────────────────────────────────
+    crew_stats = []
+    for crew_id in ['crew-alpha', 'crew-bravo', 'crew-charlie', 'crew-delta', 'crew-echo']:
+        crew_qs = all_tickets.filter(assigned_crew=crew_id)
+        total_c = crew_qs.count()
+        resolved_c = crew_qs.filter(status__in=['resolved', 'closed']).count()
+        avg_hours = None
+        resolved_with_times = crew_qs.filter(
+            status__in=['resolved', 'closed']
+        ).annotate(
+            duration=ExpressionWrapper(
+                F('updated_at') - F('created_at'),
+                output_field=DurationField()
+            )
+        ).values_list('duration', flat=True)
+        durations = [d.total_seconds() / 3600 for d in resolved_with_times if d]
+        if durations:
+            avg_hours = round(sum(durations) / len(durations), 1)
+        crew_stats.append({
+            'crew':          crew_id,
+            'ticket_count':  total_c,
+            'resolved_count': resolved_c,
+            'avg_resolution_hours': avg_hours,
+        })
+
+    # ── SLA stats — pending >48 h, in_progress >72 h are overdue ─────────────
+    pending_sla_cutoff     = now - datetime.timedelta(hours=48)
+    in_progress_sla_cutoff = now - datetime.timedelta(hours=72)
+
+    on_time = all_tickets.filter(
+        Q(status='pending',     created_at__gte=pending_sla_cutoff) |
+        Q(status='in_progress', created_at__gte=in_progress_sla_cutoff) |
+        Q(status__in=['resolved', 'closed'])
+    ).count()
+
+    overdue = all_tickets.filter(
+        Q(status='pending',     created_at__lt=pending_sla_cutoff) |
+        Q(status='in_progress', created_at__lt=in_progress_sla_cutoff)
+    ).count()
+
+    # Resolution within 72 h
+    resolved_qs = all_tickets.filter(status__in=['resolved', 'closed'])
+    resolved_total = resolved_qs.count()
+    resolved_fast = 0
+    if resolved_total:
+        sla_72h = datetime.timedelta(hours=72)
+        for t in resolved_qs.annotate(
+            duration=ExpressionWrapper(F('updated_at') - F('created_at'), output_field=DurationField())
+        ):
+            if t.duration and t.duration <= sla_72h:
+                resolved_fast += 1
+    resolution_rate_pct = round(resolved_fast / resolved_total * 100, 1) if resolved_total else 0
+
+    # ── 30-day daily trend ────────────────────────────────────────────────────
+    thirty_days_ago = now - datetime.timedelta(days=30)
+    daily_qs = (
+        all_tickets
+        .filter(created_at__gte=thirty_days_ago)
+        .extra(select={'day': "DATE(created_at)"})
+        .values('day')
+        .annotate(count=Count('id'))
+        .order_by('day')
+    )
+    daily_trend = [{'date': str(row['day']), 'count': row['count']} for row in daily_qs]
+
     return Response({
         'total':               all_tickets.count(),
         'by_status':           by_status,
@@ -449,6 +575,13 @@ def admin_stats(request):
         'by_escalation_level': by_escalation_level,
         'mapped_count':        mapped_count,
         'unmapped_count':      unmapped_count,
+        'crew_stats':          crew_stats,
+        'sla_stats': {
+            'on_time':  on_time,
+            'overdue':  overdue,
+        },
+        'resolution_rate_pct': resolution_rate_pct,
+        'daily_trend':         daily_trend,
     })
 
 
@@ -595,4 +728,61 @@ class AILogClearView(generics.GenericAPIView):
         return Response({
             'detail': f'Cleared {count} AI log entry(s). Tickets are untouched.',
             'deleted': count,
+        })
+
+
+# ── Direct-to-cloud upload: SAS token endpoint ──────────────────────────────
+
+class UploadSASView(generics.GenericAPIView):
+    """
+    GET /api/upload-sas/?filename=<filename>
+    Returns a write-permission SAS URL for a unique blob in Azure.
+    The browser then PUTs the file directly to blob.core.windows.net —
+    the file never transits through Django, eliminating upload latency.
+    Authenticated users only (prevents anonymous blob-storage abuse).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        import uuid
+        import os
+        from datetime import datetime, timezone as dt_timezone, timedelta
+        from azure.storage.blob import (
+            generate_blob_sas,
+            BlobSasPermissions,
+        )
+
+        account_name = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME', '')
+        account_key  = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY', '')
+        container    = 'maintenance-photos'
+
+        if not account_name or not account_key:
+            return Response(
+                {'detail': 'Azure storage not configured.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        original_name = request.query_params.get('filename', 'upload.jpg')
+        ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else 'jpg'
+        blob_name = f'tickets/direct/{uuid.uuid4().hex}.{ext}'
+
+        expiry = datetime.now(dt_timezone.utc) + timedelta(minutes=5)
+
+        sas_token = generate_blob_sas(
+            account_name=account_name,
+            container_name=container,
+            blob_name=blob_name,
+            account_key=account_key,
+            permission=BlobSasPermissions(write=True, create=True),
+            expiry=expiry,
+        )
+
+        upload_url = (
+            f'https://{account_name}.blob.core.windows.net'
+            f'/{container}/{blob_name}?{sas_token}'
+        )
+
+        return Response({
+            'upload_url': upload_url,
+            'blob_name':  blob_name,
         })
