@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   BrainCircuit, ChevronDown, ChevronUp, CheckCircle2,
-  AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X, AlertCircle, Sparkles,
+  AlertTriangle, RefreshCw, Filter, TrendingUp, Zap, X,
+  AlertCircle, Sparkles, RotateCcw, Trash2,
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { CATEGORY_MAP, CREW_MAP } from '../../utils/constants'
@@ -24,6 +25,48 @@ function formatDateTime(dateStr) {
   }).format(new Date(dateStr))
 }
 
+// ── Confirmation modal for the destructive Clear Log action ───────────────────
+
+function ConfirmClearModal({ onConfirm, onCancel, loading }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      <div className="glass p-6 rounded-2xl max-w-sm w-full flex flex-col gap-5 animate-slide-up">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
+            <Trash2 size={16} style={{ color: '#ef4444' }} />
+          </div>
+          <div>
+            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Clear AI Log?</p>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              This will permanently delete all AI log entries. Tickets are not affected — only the GPT-4o decision records will be removed. This cannot be undone.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="btn-secondary flex-1 justify-center py-2 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-sm font-semibold transition-all duration-150"
+            style={{ background: '#ef4444', color: '#fff' }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+          >
+            {loading ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            {loading ? 'Clearing…' : 'Yes, Clear All'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Single log entry card ─────────────────────────────────────────────────────
 
 function AILogEntry({ entry }) {
@@ -37,8 +80,6 @@ function AILogEntry({ entry }) {
 
   return (
     <div className="glass p-5 flex flex-col gap-4">
-
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-indigo-400">Ticket #{entry.ticket_id}</span>
@@ -54,17 +95,14 @@ function AILogEntry({ entry }) {
         </span>
       </div>
 
-      {/* GPT-4o one-line summary */}
       {entry.summary && (
         <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>{entry.summary}</p>
       )}
 
-      {/* Decision */}
       <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
         {entry.decision}
       </p>
 
-      {/* Confidence bar */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-slate-500">Confidence</span>
@@ -85,7 +123,6 @@ function AILogEntry({ entry }) {
         </div>
       </div>
 
-      {/* Collapsible GPT-4o reasoning steps */}
       {entry.reasoning?.length > 0 && (
         <div>
           <button
@@ -108,7 +145,6 @@ function AILogEntry({ entry }) {
         </div>
       )}
 
-      {/* Footer — model + crew + category */}
       <div className="flex items-center justify-between pt-1 flex-wrap gap-2" style={{ borderTop: '1px solid var(--divider)' }}>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-600 font-mono">{entry.model || 'gpt-4o'}</span>
@@ -140,11 +176,12 @@ export default function AILogPage() {
   const [statusFilter,   setStatusFilter]   = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [refreshing,     setRefreshing]     = useState(false)
-  // Backfill state — tracks the "Analyse All" button
   const [backfilling,    setBackfilling]    = useState(false)
-  const [backfillMsg,    setBackfillMsg]    = useState(null)  // {type: 'success'|'error', text}
+  const [regenerating,   setRegenerating]   = useState(false)
+  const [clearing,       setClearing]       = useState(false)
+  const [showClearModal, setShowClearModal] = useState(false)  // confirmation before clear
+  const [statusMsg,      setStatusMsg]      = useState(null)   // {type, text} feedback banner
 
-  // Fetch real AILog entries written by signals.py after GPT-4o analysis
   const loadLog = useCallback(async () => {
     setLoading(true)
     setFetchError(false)
@@ -167,30 +204,59 @@ export default function AILogPage() {
     loadLog().finally(() => setRefreshing(false))
   }
 
-  // Trigger GPT-4o analysis on all tickets that don't have an AILog entry yet.
-  // The backend queues them in background threads and returns immediately.
-  // We poll once after 8 seconds to pick up the results.
+  // Analyse All — only processes tickets without an existing AILog entry
   const handleBackfill = async () => {
     setBackfilling(true)
-    setBackfillMsg(null)
+    setStatusMsg(null)
     try {
-      const res = await aiLogApi.backfill()
+      const res    = await aiLogApi.backfill()
       const queued = res.data?.queued ?? 0
       if (queued === 0) {
-        setBackfillMsg({ type: 'success', text: 'All tickets are already analysed.' })
+        setStatusMsg({ type: 'success', text: 'All tickets are already analysed.' })
       } else {
-        setBackfillMsg({ type: 'success', text: `Analysing ${queued} ticket(s) — results will appear shortly.` })
-        // Poll after 8 seconds to pick up the first wave of results
-        setTimeout(() => { loadLog() }, 8000)
+        setStatusMsg({ type: 'success', text: `Analysing ${queued} ticket(s) — results will appear shortly.` })
+        setTimeout(() => loadLog(), 8000)
       }
     } catch {
-      setBackfillMsg({ type: 'error', text: 'Backfill failed. Make sure OPENAI_API_KEY is set.' })
+      setStatusMsg({ type: 'error', text: 'Analyse failed. Make sure OPENAI_API_KEY is set.' })
     } finally {
       setBackfilling(false)
     }
   }
 
-  // Derive filter options from actual data
+  // Regenerate All — overwrites every AILog entry, including existing ones
+  const handleRegenerate = async () => {
+    setRegenerating(true)
+    setStatusMsg(null)
+    try {
+      const res    = await aiLogApi.regenerate()
+      const queued = res.data?.queued ?? 0
+      setStatusMsg({ type: 'success', text: `Re-analysing all ${queued} ticket(s) — results will update shortly.` })
+      setTimeout(() => loadLog(), 8000)
+    } catch {
+      setStatusMsg({ type: 'error', text: 'Regeneration failed. Make sure OPENAI_API_KEY is set.' })
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  // Clear Log — deletes all AILog entries after confirmation
+  const handleClearConfirm = async () => {
+    setClearing(true)
+    setStatusMsg(null)
+    try {
+      const res = await aiLogApi.clear()
+      setShowClearModal(false)
+      setAiLog([])
+      setStatusMsg({ type: 'success', text: `Cleared ${res.data?.deleted ?? 0} AI log entry(s). Tickets are untouched.` })
+    } catch {
+      setShowClearModal(false)
+      setStatusMsg({ type: 'error', text: 'Clear failed. Only superusers can clear the log.' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const categories = useMemo(() => {
     const seen = new Set(aiLog.map((e) => e.category).filter(Boolean))
     return ['all', ...seen]
@@ -202,14 +268,24 @@ export default function AILogPage() {
     return true
   }), [aiLog, statusFilter, categoryFilter])
 
-  // Stats derived from real data
   const total       = aiLog.length
   const successes   = aiLog.filter((e) => e.status === 'success').length
   const avgConf     = total ? Math.round(aiLog.reduce((s, e) => s + (e.confidence || 0), 0) / total * 100) : 0
   const successRate = total ? Math.round((successes / total) * 100) : 0
 
+  const anyBusy = backfilling || regenerating || loading
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
+
+      {/* Confirmation modal */}
+      {showClearModal && (
+        <ConfirmClearModal
+          onConfirm={handleClearConfirm}
+          onCancel={() => setShowClearModal(false)}
+          loading={clearing}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -221,17 +297,45 @@ export default function AILogPage() {
             Real GPT-4o decisions made for each incoming ticket
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Analyse All — backfills every ticket without an AILog entry */}
+
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Analyse All — only unanalysed tickets */}
           <button
             onClick={handleBackfill}
-            disabled={backfilling || loading}
+            disabled={anyBusy}
             className="btn-secondary flex items-center gap-2 text-xs px-3 py-2"
-            title="Run GPT-4o analysis on all tickets that haven't been analysed yet"
+            title="Analyse tickets that don't have an AI decision yet"
           >
             <Sparkles size={12} className={backfilling ? 'animate-pulse' : ''} />
             {backfilling ? 'Analysing…' : 'Analyse All'}
           </button>
+
+          {/* Regenerate All — re-runs GPT-4o on every ticket */}
+          <button
+            onClick={handleRegenerate}
+            disabled={anyBusy}
+            className="btn-secondary flex items-center gap-2 text-xs px-3 py-2"
+            title="Re-run GPT-4o on all tickets, overwriting existing decisions"
+          >
+            <RotateCcw size={12} className={regenerating ? 'animate-spin' : ''} />
+            {regenerating ? 'Regenerating…' : 'Regenerate All'}
+          </button>
+
+          {/* Clear Log — destructive, superuser only, requires confirmation */}
+          <button
+            onClick={() => setShowClearModal(true)}
+            disabled={anyBusy || total === 0}
+            className="flex items-center gap-2 text-xs px-3 py-2 rounded transition-all duration-150 font-medium"
+            style={{ color: 'var(--text-muted)', border: '1px solid var(--card-border)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)' }}
+            title="Delete all AI log entries (tickets are not affected)"
+          >
+            <Trash2 size={12} />
+            Clear Log
+          </button>
+
+          {/* Refresh */}
           <button
             onClick={handleRefresh}
             disabled={loading || refreshing}
@@ -243,19 +347,19 @@ export default function AILogPage() {
         </div>
       </div>
 
-      {/* Backfill feedback banner */}
-      {backfillMsg && (
+      {/* Feedback banner */}
+      {statusMsg && (
         <div
           className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm animate-slide-up"
           style={{
-            background: backfillMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-            border: `1px solid ${backfillMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            color: backfillMsg.type === 'success' ? '#10b981' : '#f87171',
+            background: statusMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${statusMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            color:  statusMsg.type === 'success' ? '#10b981' : '#f87171',
           }}
         >
-          {backfillMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-          {backfillMsg.text}
-          <button onClick={() => setBackfillMsg(null)} className="ml-auto opacity-60 hover:opacity-100">
+          {statusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+          {statusMsg.text}
+          <button onClick={() => setStatusMsg(null)} className="ml-auto opacity-60 hover:opacity-100">
             <X size={13} />
           </button>
         </div>
@@ -321,7 +425,7 @@ export default function AILogPage() {
         )}
       </div>
 
-      {/* API key error banner */}
+      {/* Error banner */}
       {fetchError && (
         <div className="flex items-start gap-3 p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
           <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
@@ -333,7 +437,7 @@ export default function AILogPage() {
         </div>
       )}
 
-      {/* Empty state — show Analyse All CTA instead of a dead end */}
+      {/* Empty state */}
       {!loading && !fetchError && aiLog.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-16 rounded-2xl text-center" style={{ border: '1px dashed var(--card-border)' }}>
           <BrainCircuit size={32} className="text-slate-600" />
