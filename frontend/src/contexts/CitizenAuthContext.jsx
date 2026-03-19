@@ -45,7 +45,7 @@ export function CitizenAuthProvider({ children }) {
     const { access, refresh } = res.data
     const payload = decodePayload(access)
 
-    // Block admin/superuser accounts from logging in via the citizen portal.
+    // Block admin/superuser accounts from the citizen portal.
     // LoginPage checks err.isAdminRole to show the "use Admin Portal" redirect banner.
     if (['admin', 'superuser'].includes(payload?.role)) {
       const err = new Error('ADMIN_ROLE')

@@ -8,3 +8,4 @@ azure-storage-blob
 Pillow
 whitenoise
 requests
+openai

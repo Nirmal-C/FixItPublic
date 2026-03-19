@@ -224,3 +224,19 @@ class TicketAssignSerializer(serializers.ModelSerializer):
             'escalated_at', 'escalated_by',
         )
         read_only_fields = ('id', 'escalated_at', 'escalated_by')
+
+
+class AILogSerializer(serializers.ModelSerializer):
+    """Read-only serializer for real GPT-4o AILog entries shown on the admin AI Log page."""
+    ticket_id = serializers.IntegerField(source='ticket.id',    read_only=True)
+    category  = serializers.CharField(source='ticket.category', read_only=True)
+
+    class Meta:
+        from .models import AILog
+        model  = AILog
+        fields = (
+            'id', 'ticket_id', 'category',
+            'assigned_crew', 'escalated', 'escalation_level', 'escalation_note',
+            'summary', 'decision', 'reasoning', 'confidence', 'status', 'model',
+            'created_at',
+        )
