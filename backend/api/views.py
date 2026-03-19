@@ -488,3 +488,59 @@ def public_stats(request):
         'avg_response_days': avg_response_days,
         'community_members': community_members,
     })
+
+
+# ── AI Log ──────────────────────────────────────────────────────────────────────
+
+class AILogListView(generics.ListAPIView):
+    """
+    GET /api/ai-log/
+    Returns all real GPT-4o decisions for the admin AI Log page.
+    Restricted to council admins and above.
+    """
+    permission_classes = [IsCouncilAdmin]
+
+    def get_serializer_class(self):
+        from .serializers import AILogSerializer
+        return AILogSerializer
+
+    def get_queryset(self):
+        from .models import AILog
+        return AILog.objects.select_related('ticket').all()
+
+
+class AILogBackfillView(generics.GenericAPIView):
+    """
+    POST /api/ai-log/backfill/
+    Queues GPT-4o analysis for every ticket that does not yet have an AILog entry.
+    Spawns a background thread per ticket so the response returns immediately.
+    Restricted to council admins and above.
+    """
+    permission_classes = [IsCouncilAdmin]
+
+    def post(self, request, *args, **kwargs):
+        from .models import AILog, MaintenanceTicket
+        from .signals import _analyse_and_save
+        import threading
+
+        # Find all tickets that have no AILog entry yet
+        analysed_ids = AILog.objects.values_list('ticket_id', flat=True)
+        pending = MaintenanceTicket.objects.exclude(pk__in=analysed_ids)
+        count   = pending.count()
+
+        if count == 0:
+            return Response({'detail': 'All tickets already analysed.', 'queued': 0})
+
+        # Spawn a daemon thread per ticket — identical to the post_save signal path
+        for ticket in pending:
+            thread = threading.Thread(
+                target=_analyse_and_save,
+                args=(ticket.pk,),
+                daemon=True,
+            )
+            thread.start()
+
+        return Response({
+            'detail': f'Queued GPT-4o analysis for {count} ticket(s). Results will appear shortly.',
+            'queued': count,
+        })

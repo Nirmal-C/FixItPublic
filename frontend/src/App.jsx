@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './components/Toast'
-import { AdminAuthProvider } from './contexts/AdminAuthContext'
+import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext'
 import { CitizenAuthProvider } from './contexts/CitizenAuthContext'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
@@ -18,6 +18,12 @@ import TicketsPage from './pages/admin/TicketsPage'
 import AILogPage from './pages/admin/AILogPage'
 import UsersPage from './pages/admin/UsersPage'
 
+function HomeRedirect() {
+  const { isAuthenticated } = useAdminAuth()
+  if (isAuthenticated) return <Navigate to="/admin" replace />
+  return <HomePage />
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -28,7 +34,7 @@ function App() {
         <Routes>
           {/* Public routes — wrapped in Layout (Navbar + Footer) */}
           <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
+            <Route index element={<HomeRedirect />} />
             <Route path="report" element={<ReportIssuePage />} />
             <Route path="requests" element={<ViewRequestsPage />} />
             <Route path="track" element={<TrackIssuePage />} />

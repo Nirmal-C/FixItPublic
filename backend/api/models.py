@@ -120,3 +120,45 @@ class MaintenanceTicket(models.Model):
 
     def __str__(self):
         return f'#{self.pk} {self.title}'
+
+class AILog(models.Model):
+    """
+    Stores the real GPT-4o decision made for each ticket on creation.
+    Written by signals.py after analysing the ticket — replaces the mock
+    data that was previously generated client-side in AILogPage.jsx.
+    """
+
+    class Status(models.TextChoices):
+        SUCCESS   = 'success',   'Success'
+        ESCALATED = 'escalated', 'Escalated'
+        ERROR     = 'error',     'Error'
+
+    # The ticket this log entry belongs to (one-to-one)
+    ticket = models.OneToOneField(
+        MaintenanceTicket,
+        on_delete=models.CASCADE,
+        related_name='ai_log',
+    )
+
+    # GPT-4o decisions
+    assigned_crew    = models.CharField(max_length=20, blank=True)
+    escalated        = models.BooleanField(default=False)
+    escalation_level = models.CharField(max_length=20, blank=True)
+    escalation_note  = models.TextField(blank=True)
+    summary          = models.TextField(blank=True, help_text='GPT-4o one-line summary of the ticket')
+    decision         = models.TextField(blank=True, help_text='Human-readable explanation of the AI decision')
+    reasoning        = models.JSONField(default=list,  help_text='List of reasoning steps from GPT-4o')
+    confidence       = models.FloatField(default=0.0,  help_text='Confidence score 0-1 from GPT-4o')
+    status           = models.CharField(max_length=10, choices=Status.choices, default=Status.SUCCESS)
+    model            = models.CharField(max_length=50, default='gpt-4o')
+
+    # Raw OpenAI response stored for debugging
+    raw_response = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'AILog for ticket #{self.ticket_id} — {self.status}'
