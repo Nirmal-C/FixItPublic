@@ -8,6 +8,7 @@ import * as LucideIcons from 'lucide-react'
 import { requestsApi } from '../../api/client'
 import StatusBadge from '../../components/StatusBadge'
 import { CATEGORY_MAP } from '../../utils/constants'
+import AdminMap from '../../components/AdminMap'
 
 function formatDate(dateStr) {
   if (!dateStr) return '—'
@@ -120,6 +121,18 @@ export default function DashboardPage() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* ── Live Issue Map ── */}
+      <div className="glass p-5 flex flex-col gap-2">
+        <AdminMap
+          tickets={tickets}
+          loading={loading}
+          onStatusChange={async (id, status) => {
+            await requestsApi.updateStatus(id, status)
+            fetchTickets()
+          }}
+        />
       </div>
 
       {/* Recent tickets table */}
