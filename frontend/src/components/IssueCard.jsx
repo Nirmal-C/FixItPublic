@@ -66,7 +66,7 @@ function LocationTooltip({ location, color }) {
 }
 
 /* Photo slider used in the grid card when a ticket has multiple photos */
-function PhotoSlider({ photos, title }) {
+function PhotoSlider({ photos, title, compact = false }) {
   const [idx, setIdx] = useState(0)
   const prev = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i - 1 + photos.length) % photos.length) }
   const next = (e) => { e.preventDefault(); e.stopPropagation(); setIdx((i) => (i + 1) % photos.length) }
@@ -264,7 +264,7 @@ export default function IssueCard({ issue, compact = false }) {
     <article className="issue-card group relative hover:z-[60]" style={{ overflow: 'visible' }}>
       {/* Photo slider or icon placeholder */}
       {photos.length > 0 ? (
-        <PhotoSlider photos={photos} title={issue.title} />
+        <PhotoSlider photos={photos} title={issue.title} compact={compact} />
       ) : (
         <div
           className="w-full h-36 rounded overflow-hidden shrink-0 flex items-center justify-center"
