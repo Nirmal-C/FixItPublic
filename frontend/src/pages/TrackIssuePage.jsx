@@ -559,10 +559,29 @@ function TicketTracker({ id }) {
           </div>
         )}
 
+        {/* Cultural sensitivity banner */}
+        {ticket.cultural_flag && (
+          <div
+            className="glass p-4 flex items-start gap-3"
+            style={{ border: '1px solid rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.06)' }}
+          >
+            <span className="text-yellow-400 font-bold text-sm shrink-0">🌿</span>
+            <div>
+              <p className="text-sm font-semibold text-yellow-300">Wāhi Tapu — Cultural Sensitivity</p>
+              {ticket.cultural_site && (
+                <p className="text-xs text-slate-400 mt-1">{ticket.cultural_site}</p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">
+                This location is within a registered culturally significant Māori site. Council staff have been notified.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Escalation banner */}
         {ticket.escalated && (
           <div
-            className="glass p-4 flex items-start gap-3 animate-slide-up"
+            className="glass p-4 flex items-start gap-3"
             style={{ border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.06)' }}
           >
             <span className="text-amber-400 font-bold text-sm shrink-0">⚠</span>

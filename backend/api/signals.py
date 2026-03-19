@@ -22,6 +22,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import MaintenanceTicket
+from .utils import redact_pii
+from .cultural_guardian import check_cultural_sensitivity
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +92,17 @@ def _analyse_and_save(ticket_id: int) -> None:
         logger.error('Signal: ticket #%s not found', ticket_id)
         return
 
+    # ── Cultural sensitivity check ────────────────────────────────────────────
+    cultural = check_cultural_sensitivity(ticket.lat, ticket.lng)
+    if cultural['is_sensitive']:
+        ticket.cultural_flag = True
+        ticket.cultural_site = cultural['site_name'] or ''
+        ticket.save(update_fields=['cultural_flag', 'cultural_site'])
+        logger.info(
+            'Ticket #%s flagged as culturally sensitive — site: %s',
+            ticket_id, cultural['site_name']
+        )
+
     # ── Get API key from environment ──────────────────────────────────────────
     api_key = os.environ.get('OPENAI_API_KEY')
 
@@ -102,20 +115,34 @@ def _analyse_and_save(ticket_id: int) -> None:
 
     client = OpenAI(api_key=api_key)
 
+    # Redact PII before sending any text to OpenAI — DB values are unchanged
+    safe_title       = redact_pii(ticket.title)
+    safe_description = redact_pii(ticket.description)
+    safe_location    = redact_pii(ticket.location_description)
+
     user_prompt = (
-        f'Title: {ticket.title}\n'
+        f'Title: {safe_title}\n'
         f'Category: {ticket.category}\n'
-        f'Description: {ticket.description}\n'
-        f'Location: {ticket.location_description}\n'
+        f'Description: {safe_description}\n'
+        f'Location: {safe_location}\n'
         f'Current assigned crew: {ticket.assigned_crew or "none"}'
     )
 
     # ── Call GPT-4o ───────────────────────────────────────────────────────────
+    system_prompt = SYSTEM_PROMPT
+    if cultural['is_sensitive']:
+        system_prompt = (
+            f'⚠️ CULTURAL SENSITIVITY ALERT: This ticket is located within '
+            f'"{cultural["site_name"]}", a registered Wāhi Tapu zone. '
+            'Escalate to council_manager minimum and note cultural considerations.\n\n'
+            + SYSTEM_PROMPT
+        )
+
     try:
         response = client.chat.completions.create(
             model='gpt-4o',
             messages=[
-                {'role': 'system', 'content': SYSTEM_PROMPT},
+                {'role': 'system', 'content': system_prompt},
                 {'role': 'user',   'content': user_prompt},
             ],
             temperature=0.2,

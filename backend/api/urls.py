@@ -89,3 +89,8 @@ urlpatterns += [
     path('ai-log/regenerate/', AILogRegenerateView.as_view(), name='ai-log-regenerate'),
     path('ai-log/clear/',      AILogClearView.as_view(),      name='ai-log-clear'),
 ]
+
+from .views import UploadSASView
+urlpatterns += [
+    path('upload-sas/', UploadSASView.as_view(), name='upload-sas'),
+]
