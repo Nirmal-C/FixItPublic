@@ -5,8 +5,8 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── 1. Security ────────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-local-dev-key')
-DEBUG      = os.environ.get('DEBUG', 'False') == 'True'
+SECRET_KEY    = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-local-dev-key')
+DEBUG         = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # ── 2. Custom user model ───────────────────────────────────────────────────────
@@ -17,7 +17,6 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',
     'django.contrib.staticfiles',
     'storages',
     'rest_framework',
@@ -35,7 +34,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -51,7 +49,6 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -78,9 +75,7 @@ DATABASES = {
 # ── 5. Static & media ──────────────────────────────────────────────────────────
 STATIC_URL  = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Azure Blob Storage — private container, SAS tokens for signed URLs.
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.azure_storage.AzureStorage",
@@ -114,24 +109,24 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon':          '120/hour',   # general anonymous cap
-        'user':          '600/hour',   # authenticated user cap
-        'ticket_create': '10/hour',    # anonymous ticket submissions
-        'register':      '5/hour',     # account registrations
-        'login':         '10/hour',    # login attempts
+        'anon':          '120/hour',
+        'user':          '600/hour',
+        'ticket_create': '10/hour',
+        'register':      '5/hour',
+        'login':         '10/hour',
     },
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME':  timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS':  True,
+    'ACCESS_TOKEN_LIFETIME':    timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME':   timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS':    True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'TOKEN_OBTAIN_SERIALIZER': 'api.token_serializer.CustomTokenObtainPairSerializer',
+    'AUTH_HEADER_TYPES':        ('Bearer',),
+    'TOKEN_OBTAIN_SERIALIZER':  'api.token_serializer.CustomTokenObtainPairSerializer',
 }
 
-# -- 8. Email (SMTP - Namecheap Private Email) --------------------------------
+# ── 8. Email (SMTP — Namecheap Private Email) ──────────────────────────────────
 EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST          = 'mail.privateemail.com'
 EMAIL_PORT          = 587
@@ -142,8 +137,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = 'FixItPublic <info@fixitpublic.com>'
 SERVER_EMAIL        = DEFAULT_FROM_EMAIL
 
-# Public-facing site URL — used to build tracking links in emails
+# ── 9. Site URL — used to build tracking links in emails ───────────────────────
 SITE_URL = os.environ.get('SITE_URL', 'https://fixitpublic.com')
 
-# ── 9. Misc ────────────────────────────────────────────────────────────────────
+# ── 10. Misc ───────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
