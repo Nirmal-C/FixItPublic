@@ -11,6 +11,7 @@ import ViewRequestsPage from './pages/ViewRequestsPage'
 import TrackIssuePage from './pages/TrackIssuePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import CitizenDashboardPage from './pages/CitizenDashboardPage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
@@ -39,6 +40,7 @@ function App() {
             <Route path="requests" element={<ViewRequestsPage />} />
             <Route path="track" element={<TrackIssuePage />} />
             <Route path="track/:id" element={<TrackIssuePage />} />
+            <Route path="dashboard" element={<CitizenDashboardPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
 

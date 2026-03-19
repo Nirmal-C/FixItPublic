@@ -138,6 +138,31 @@ export const statsApi = {
   admin:  ()  => apiClient.get('/api/admin/stats/'),
 }
 
+// ── Direct-to-cloud upload (SAS tokens) ──────────────────────────────────────
+
+export const uploadApi = {
+  /** Get a 5-min write-permission SAS URL for a unique blob. */
+  getSasUrl: (filename) =>
+    apiClient.get('/api/upload-sas/', { params: { filename } }),
+
+  /**
+   * PUT the file directly to Azure Blob Storage using the SAS URL.
+   * Returns the native fetch Response (not an axios response).
+   */
+  directUpload: async (sasUrl, file) => {
+    const res = await fetch(sasUrl, {
+      method: 'PUT',
+      headers: {
+        'x-ms-blob-type': 'BlockBlob',
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+      body: file,
+    })
+    if (!res.ok) throw new Error(`Azure upload failed: ${res.status}`)
+    return res
+  },
+}
+
 export default apiClient
 
 export const aiLogApi = {
