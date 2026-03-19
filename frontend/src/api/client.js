@@ -36,7 +36,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
-    // Never intercept auth endpoints — login/register errors must reach the caller
     const isAuthEndpoint = original?.url?.includes('/auth/token') || original?.url?.includes('/auth/register')
     if (error?.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true
@@ -66,11 +65,19 @@ apiClient.interceptors.response.use(
   }
 )
 
+// ── Tickets ─────────────────────────────────────────────────────────────────
+
 export const requestsApi = {
-  list:         (params = {}) => apiClient.get('/api/requests/', { params }),
-  get:          (id)          => apiClient.get(`/api/requests/${id}/`),
+  /**
+   * List tickets with optional filters.
+   * Supports: status, category, search, crew, escalated, ordering, page, page_size
+   * Status and category accept comma-separated values: { status: 'pending,in_progress' }
+   */
+  list: (params = {}) => apiClient.get('/api/requests/', { params }),
+
+  get: (id) => apiClient.get(`/api/requests/${id}/`),
+
   create: (data) => {
-    // Support multi-photo: data.photos is an array of up to 5 Files
     const PHOTO_KEYS = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
     const photos = Array.isArray(data.photos)
       ? data.photos.filter((p) => p instanceof File).slice(0, 5)
@@ -90,10 +97,26 @@ export const requestsApi = {
     }
     return apiClient.post('/api/requests/', data)
   },
+
   updateStatus: (id, status) => apiClient.patch(`/api/requests/${id}/status/`, { status }),
   assign:       (id, data)   => apiClient.patch(`/api/requests/${id}/assign/`, data),
+  delete:       (id)         => apiClient.delete(`/api/requests/${id}/delete/`),
   mine:         (params = {}) => apiClient.get('/api/requests/mine/', { params }),
 }
+
+// ── Map ──────────────────────────────────────────────────────────────────────
+
+export const mapApi = {
+  /**
+   * GET /api/map/
+   * All GPS-tagged tickets. Public callers get PII-safe fields.
+   * Admin callers automatically receive full detail (handled server-side).
+   * Supports: status, category, search filters (no pagination).
+   */
+  tickets: (params = {}) => apiClient.get('/api/map/', { params }),
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
 
 export const authApi = {
   login:         (data)    => apiClient.post('/api/auth/token/', data),
@@ -103,12 +126,16 @@ export const authApi = {
   updateProfile: (changes) => apiClient.patch('/api/auth/profile/', changes),
 }
 
+// ── Stats ────────────────────────────────────────────────────────────────────
+
 export const healthApi = {
   check: () => apiClient.get('/api/health/'),
 }
 
 export const statsApi = {
-  public: () => apiClient.get('/api/stats/'),
+  public: ()  => apiClient.get('/api/stats/'),
+  /** Admin breakdown — requires council admin+ role */
+  admin:  ()  => apiClient.get('/api/admin/stats/'),
 }
 
 export default apiClient
