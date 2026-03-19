@@ -90,6 +90,11 @@ export function validateReportForm(values) {
     validators.minLength(5)(values.location_description, 'Location') ||
     validators.maxLength(300)(values.location_description, 'Location')
   if (locationErr) errors.location_description = locationErr
+  // Require a precise point (GPS or map pin) so tickets can be mapped.
+  // Users are never asked to type coords; they come from GPS or a map click.
+  if (!errors.location_description && (values.lat == null || values.lng == null)) {
+    errors.location_description = 'Please use GPS or pick the exact spot on the map.'
+  }
 
   if (values.reporter_email) {
     const emailErr = validators.email(values.reporter_email)

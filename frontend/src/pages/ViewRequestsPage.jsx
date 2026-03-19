@@ -10,53 +10,7 @@ import IssueCard from '../components/IssueCard'
 import SkeletonCard from '../components/SkeletonCard'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
-
-const STATUS_COLORS = { pending: '#f59e0b', in_progress: '#3b82f6', resolved: '#10b981', closed: '#64748b' }
-
-/* ─── Leaflet map component ─── */
-function IssueMap({ issues }) {
-  const mapRef     = useRef(null)
-  const leafletRef = useRef(null)
-
-  useEffect(() => {
-    import('leaflet').then((L) => {
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link')
-        link.id = 'leaflet-css'; link.rel = 'stylesheet'
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-        document.head.appendChild(link)
-      }
-      if (!mapRef.current) return
-      if (leafletRef.current) { leafletRef.current.remove(); leafletRef.current = null }
-
-      const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false })
-        .setView([-36.8607, 174.7628], 13)
-      leafletRef.current = map
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-
-      issues.forEach((issue) => {
-        if (!issue.lat || !issue.lng) return
-        const color = STATUS_COLORS[issue.status] || '#0077C8'
-        const cat   = CATEGORY_MAP[issue.category] || { label: issue.category }
-        L.circleMarker([issue.lat, issue.lng], { radius: 9, fillColor: color, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.85 })
-          .addTo(map)
-          .bindPopup(`<div style="min-width:180px;font-family:system-ui,sans-serif">
-            <p style="font-weight:700;font-size:13px;margin:0 0 4px">#${issue.id} ${issue.title}</p>
-            <p style="font-size:11px;color:#64748b;margin:0 0 2px">${cat.label}</p>
-            <p style="font-size:11px;color:${color};font-weight:600;margin:0 0 4px;text-transform:capitalize">${issue.status.replace('_', ' ')}</p>
-            <p style="font-size:11px;color:#94a3b8;margin:0">${issue.location_description || ''}</p>
-          </div>`)
-      })
-    })
-    return () => { if (leafletRef.current) { leafletRef.current.remove(); leafletRef.current = null } }
-  }, [issues])
-
-  return <div ref={mapRef} className="w-full rounded-lg overflow-hidden" style={{ height: '520px', border: '1px solid var(--card-border)' }} />
-}
+import PublicMap from '../components/PublicMap'
 
 const ALL_STATUS = { id: 'all', label: 'All Status' }
 
@@ -353,19 +307,8 @@ export default function ViewRequestsPage() {
             )}
 
             {/* ── Content area ── */}
-            {viewMode === 'map' && !loading ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {Object.entries(STATUS_COLORS).map(([status, color]) => (
-                    <span key={status} className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-                      <span className="capitalize">{status.replace('_', ' ')}</span>
-                    </span>
-                  ))}
-                  <span className="ml-auto">Click a pin to see details</span>
-                </div>
-                <IssueMap issues={issues} />
-              </div>
+            {viewMode === 'map' ? (
+              <PublicMap tickets={issues} loading={loading} />
 
             ) : loading ? (
               <div className={`grid gap-4 ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
