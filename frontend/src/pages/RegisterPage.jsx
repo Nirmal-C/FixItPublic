@@ -296,7 +296,7 @@ export default function RegisterPage() {
           <div className="text-center text-sm" style={{ borderTop: '1px solid var(--divider)', paddingTop: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
             <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-              Sign in
+              Sign In
             </Link>
           </div>
         </div>

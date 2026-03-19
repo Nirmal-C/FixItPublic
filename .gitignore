@@ -33,5 +33,4 @@ docker-compose.override.yml
 *.swp
 *.swo
 
-# --- Claude Code ---
 .claude/

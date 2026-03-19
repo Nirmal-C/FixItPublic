@@ -366,13 +366,13 @@ export default function AILogPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Total Decisions', value: loading ? '…' : total,             icon: BrainCircuit, color: '#6366f1' },
           { label: 'Success Rate',    value: loading ? '…' : `${successRate}%`, icon: TrendingUp,   color: '#10b981' },
           { label: 'Avg Confidence',  value: loading ? '…' : `${avgConf}%`,     icon: Zap,          color: '#f59e0b' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="glass p-4 flex flex-col gap-2" style={{ border: `1px solid ${color}20` }}>
+          <div key={label} className="glass p-4 flex items-center justify-between sm:flex-col sm:items-start gap-2" style={{ border: `1px solid ${color}20` }}>
             <div className="flex items-center gap-2">
               <Icon size={13} style={{ color }} />
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>

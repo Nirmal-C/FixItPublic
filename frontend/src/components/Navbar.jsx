@@ -136,7 +136,7 @@ export default function Navbar() {
                 </button>
                 {userMenuOpen && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-56 rounded-xl py-1 z-50 animate-slide-down"
+                    className="absolute right-0 top-full mt-2 w-56 rounded-xl py-1 z-50"
                     style={{ background: '#001E3C', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
                   >
                     <Link
@@ -225,7 +225,7 @@ export default function Navbar() {
       {/* ── Mobile menu ── */}
       {mobileOpen && (
         <div
-          className="md:hidden animate-slide-down"
+          className="md:hidden"
           style={{ backgroundColor: '#001E3C', borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="section-container py-4 flex flex-col gap-0.5">

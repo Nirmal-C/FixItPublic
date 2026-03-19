@@ -90,11 +90,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-        {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }) => (
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }, idx) => (
           <div
             key={key}
-            className="glass p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 hover:scale-[1.02] transition-transform duration-200"
+            className={`glass p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 hover:scale-[1.02] transition-transform duration-200 ${idx === 4 ? 'col-span-2 sm:col-span-1' : ''}`}
           >
             {loading ? (
               <div className="flex flex-col gap-3">
