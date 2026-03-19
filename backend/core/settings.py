@@ -109,6 +109,17 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 9,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon':          '120/hour',   # general anonymous cap
+        'user':          '600/hour',   # authenticated user cap
+        'ticket_create': '10/hour',    # anonymous ticket submissions
+        'register':      '5/hour',     # account registrations
+        'login':         '10/hour',    # login attempts
+    },
 }
 
 SIMPLE_JWT = {
@@ -130,9 +141,6 @@ EMAIL_HOST_USER     = 'info@fixitpublic.com'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = 'FixItPublic <info@fixitpublic.com>'
 SERVER_EMAIL        = DEFAULT_FROM_EMAIL
-
-# Public-facing site URL -- used to build tracking links in emails
-SITE_URL = 'https://fixitpublic.com'
 
 # Public-facing site URL — used to build tracking links in emails
 SITE_URL = os.environ.get('SITE_URL', 'https://fixitpublic.com')

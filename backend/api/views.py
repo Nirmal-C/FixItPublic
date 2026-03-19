@@ -1,23 +1,25 @@
 import requests as http_requests
 from django.http import JsonResponse, HttpResponse
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.core.files.storage import default_storage
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.throttling import AnonRateThrottle
 
-from django.utils import timezone
 from .models import MaintenanceTicket, CATEGORY_CREW_MAP
 from .serializers import (
     RegisterSerializer, UserProfileSerializer,
     AdminUserSerializer, CreateAdminSerializer,
     TicketListSerializer, TicketDetailSerializer,
     TicketStatusSerializer, TicketAssignSerializer,
+    MapTicketSerializer,
 )
 from .permissions import IsCouncilAdmin, IsSuperuser
 from .emails import (
@@ -30,7 +32,27 @@ from .emails import (
 User = get_user_model()
 
 
-# ── Utilities ──────────────────────────────────────────────────────────────────
+# ── Throttle classes ────────────────────────────────────────────────────────────
+
+class TicketCreateThrottle(AnonRateThrottle):
+    """10 ticket submissions per hour per IP for unauthenticated users."""
+    rate  = '10/hour'
+    scope = 'ticket_create'
+
+
+class RegisterThrottle(AnonRateThrottle):
+    """5 registrations per hour per IP — prevents spam accounts."""
+    rate  = '5/hour'
+    scope = 'register'
+
+
+class LoginThrottle(AnonRateThrottle):
+    """10 login attempts per hour per IP."""
+    rate  = '10/hour'
+    scope = 'login'
+
+
+# ── Utilities ───────────────────────────────────────────────────────────────────
 
 def hello_world(request):
     return JsonResponse({'message': 'Hello from the Django Backend!'})
@@ -64,7 +86,7 @@ def health_check(request):
     return JsonResponse(status_data, status=200)
 
 
-# ── Photo proxy ────────────────────────────────────────────────────────────────
+# ── Photo proxy ─────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -74,11 +96,7 @@ def serve_photo(request, path):
     Proxies ticket photos through Django so the frontend never calls
     Azure directly. Django generates a fresh signed SAS URL internally,
     fetches the blob, and streams the bytes back to the browser.
-    The Azure container stays private at all times.
     """
-    # Try the full multi-field query first. If migration 0006 hasn't been
-    # applied yet (photo2–photo5 columns don't exist), fall back to the
-    # original single-field query so existing photos keep working.
     try:
         ticket = MaintenanceTicket.objects.filter(
             Q(photo=path) | Q(photo2=path) | Q(photo3=path) | Q(photo4=path) | Q(photo5=path)
@@ -89,8 +107,6 @@ def serve_photo(request, path):
     if not ticket:
         return Response({'detail': 'Not found.'}, status=404)
 
-    # Find which of the five fields actually holds this path.
-    # Fall back gracefully if extra columns don't exist yet.
     photo_field = None
     for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
         try:
@@ -117,7 +133,7 @@ def serve_photo(request, path):
     )
 
 
-# ── Pagination ─────────────────────────────────────────────────────────────────
+# ── Pagination ──────────────────────────────────────────────────────────────────
 
 class TicketPagination(PageNumberPagination):
     page_size             = 9
@@ -125,12 +141,13 @@ class TicketPagination(PageNumberPagination):
     max_page_size         = 1000
 
 
-# ── Auth ───────────────────────────────────────────────────────────────────────
+# ── Auth ────────────────────────────────────────────────────────────────────────
 
 class RegisterView(generics.CreateAPIView):
     queryset           = User.objects.all()
     serializer_class   = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes   = [RegisterThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -148,12 +165,21 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-# ── Superuser: user management ─────────────────────────────────────────────────
+# ── Superuser: user management ──────────────────────────────────────────────────
 
 class UserListView(generics.ListAPIView):
-    queryset           = User.objects.all().order_by('-date_joined')
     serializer_class   = AdminUserSerializer
     permission_classes = [IsSuperuser]
+
+    def get_queryset(self):
+        qs     = User.objects.all().order_by('-date_joined')
+        role   = self.request.query_params.get('role')
+        search = self.request.query_params.get('search')
+        if role:
+            qs = qs.filter(role=role)
+        if search:
+            qs = qs.filter(Q(username__icontains=search) | Q(email__icontains=search))
+        return qs
 
 
 class UserCreateView(generics.CreateAPIView):
@@ -188,7 +214,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return self.update(request, *args, **kwargs)
 
 
-# ── Admin: read-only user list ─────────────────────────────────────────────────
+# ── Admin: read-only user list ──────────────────────────────────────────────────
 
 class AdminUserListView(generics.ListAPIView):
     queryset           = User.objects.all().order_by('-date_joined')
@@ -196,11 +222,24 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsCouncilAdmin]
 
 
-# ── Tickets ────────────────────────────────────────────────────────────────────
+# ── Tickets ─────────────────────────────────────────────────────────────────────
+
+VALID_SORT_FIELDS = {
+    'created_at', '-created_at',
+    'updated_at', '-updated_at',
+    'status', '-status',
+    'category', '-category',
+}
+
 
 class TicketListCreateView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
     pagination_class   = TicketPagination
+
+    def get_throttles(self):
+        if self.request.method == 'POST' and not self.request.user.is_authenticated:
+            return [TicketCreateThrottle()]
+        return []
 
     def get_serializer_class(self):
         return TicketDetailSerializer if self.request.method == 'POST' else TicketListSerializer
@@ -209,23 +248,41 @@ class TicketListCreateView(generics.ListCreateAPIView):
         qs     = MaintenanceTicket.objects.all()
         params = self.request.query_params
 
+        # Status — comma-separated: ?status=pending,in_progress
         if params.get('status'):
-            qs = qs.filter(status=params['status'])
+            statuses = [s.strip() for s in params['status'].split(',') if s.strip()]
+            qs = qs.filter(status__in=statuses)
 
+        # Category — comma-separated: ?category=road,footpath
         if params.get('category'):
-            qs = qs.filter(category=params['category'])
+            categories = [c.strip() for c in params['category'].split(',') if c.strip()]
+            qs = qs.filter(category__in=categories)
 
+        # Search across title, description, and location
         if params.get('search'):
-            term = params['search']
+            term = params['search'].strip()
             qs = qs.filter(
                 Q(title__icontains=term) |
+                Q(description__icontains=term) |
                 Q(location_description__icontains=term)
             )
 
-        return qs
+        # Crew filter (admin use)
+        if params.get('crew'):
+            qs = qs.filter(assigned_crew=params['crew'])
+
+        # Escalated-only filter (admin use)
+        if params.get('escalated') == 'true':
+            qs = qs.filter(escalated=True)
+
+        # Ordering — whitelisted to prevent arbitrary field exposure
+        ordering = params.get('ordering', '-created_at')
+        if ordering not in VALID_SORT_FIELDS:
+            ordering = '-created_at'
+        return qs.order_by(ordering)
 
     def perform_create(self, serializer):
-        """Auto-assign crew based on category when a ticket is first created."""
+        """Auto-assign crew from category; link authenticated reporter."""
         category  = self.request.data.get('category', 'other')
         auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
         ticket    = serializer.save(assigned_crew=auto_crew)
@@ -255,7 +312,6 @@ class TicketAssignView(generics.UpdateAPIView):
     """
     PATCH /api/requests/<id>/assign/
     Admin can update crew assignment and/or escalate a ticket.
-    When escalating, records who escalated and when.
     """
     queryset           = MaintenanceTicket.objects.all()
     serializer_class   = TicketAssignSerializer
@@ -265,11 +321,9 @@ class TicketAssignView(generics.UpdateAPIView):
     def perform_update(self, serializer):
         data  = serializer.validated_data
         extra = {}
-        # If escalation is being set to True, stamp who escalated and when
         if data.get('escalated') and not serializer.instance.escalated:
             extra['escalated_at'] = timezone.now()
             extra['escalated_by'] = self.request.user
-        # If escalation is being cleared, wipe the escalation metadata
         elif not data.get('escalated', True):
             extra['escalated_at']     = None
             extra['escalated_by']     = None
@@ -277,9 +331,22 @@ class TicketAssignView(generics.UpdateAPIView):
             extra['escalation_note']  = ''
         old_crew = serializer.instance.assigned_crew
         ticket   = serializer.save(**extra)
-        # Email the reporter if the crew assignment changed
         if ticket.assigned_crew != old_crew:
             send_ticket_status_update(ticket)
+
+
+class TicketDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/requests/<id>/delete/
+    Hard-delete restricted to superusers only. Regular admins close tickets instead.
+    """
+    queryset           = MaintenanceTicket.objects.all()
+    permission_classes = [IsSuperuser]
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({'detail': 'Ticket deleted.'}, status=status.HTTP_204_NO_CONTENT)
 
 
 class MyTicketsView(generics.ListAPIView):
@@ -288,35 +355,119 @@ class MyTicketsView(generics.ListAPIView):
     pagination_class   = TicketPagination
 
     def get_queryset(self):
-        return MaintenanceTicket.objects.filter(reporter_user=self.request.user)
+        qs       = MaintenanceTicket.objects.filter(reporter_user=self.request.user)
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        if ordering not in VALID_SORT_FIELDS:
+            ordering = '-created_at'
+        return qs.order_by(ordering)
 
 
-# ── Public stats ───────────────────────────────────────────────────────────────
+# ── Map endpoint ────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def map_tickets(request):
+    """
+    GET /api/map/
+    Returns all tickets with GPS coordinates in a lightweight format.
+    Intentionally omits reporter PII — safe for public consumption.
+    Admins get the full serializer (includes reporter + crew info).
+    No pagination — the map needs all pins at once.
+
+    Optional filters: ?status=pending,in_progress  ?category=road  ?search=queen+st
+    """
+    qs = MaintenanceTicket.objects.exclude(lat__isnull=True).exclude(lng__isnull=True)
+
+    params = request.query_params
+
+    if params.get('status'):
+        statuses = [s.strip() for s in params['status'].split(',') if s.strip()]
+        qs = qs.filter(status__in=statuses)
+
+    if params.get('category'):
+        categories = [c.strip() for c in params['category'].split(',') if c.strip()]
+        qs = qs.filter(category__in=categories)
+
+    if params.get('search'):
+        term = params['search'].strip()
+        qs = qs.filter(
+            Q(title__icontains=term) |
+            Q(location_description__icontains=term)
+        )
+
+    qs = qs.order_by('-created_at')
+
+    user = request.user
+    if user.is_authenticated and getattr(user, 'is_council_admin', False):
+        serializer = TicketDetailSerializer(qs, many=True)
+    else:
+        serializer = MapTicketSerializer(qs, many=True)
+
+    return Response(serializer.data)
+
+
+# ── Admin stats breakdown ───────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsCouncilAdmin])
+def admin_stats(request):
+    """
+    GET /api/admin/stats/
+    Detailed breakdown for the admin dashboard — not exposed publicly.
+    Returns counts by status, category, and crew plus escalation and GPS coverage.
+    """
+    all_tickets = MaintenanceTicket.objects.all()
+
+    by_status = dict(
+        all_tickets.values('status').annotate(n=Count('id')).values_list('status', 'n')
+    )
+    by_category = dict(
+        all_tickets.values('category').annotate(n=Count('id')).values_list('category', 'n')
+    )
+    by_crew = dict(
+        all_tickets.exclude(assigned_crew='')
+        .values('assigned_crew').annotate(n=Count('id'))
+        .values_list('assigned_crew', 'n')
+    )
+
+    escalated_total = all_tickets.filter(escalated=True).count()
+    by_escalation_level = dict(
+        all_tickets.filter(escalated=True).exclude(escalation_level='')
+        .values('escalation_level').annotate(n=Count('id'))
+        .values_list('escalation_level', 'n')
+    )
+
+    mapped_count   = all_tickets.exclude(lat__isnull=True).exclude(lng__isnull=True).count()
+    unmapped_count = all_tickets.filter(Q(lat__isnull=True) | Q(lng__isnull=True)).count()
+
+    return Response({
+        'total':               all_tickets.count(),
+        'by_status':           by_status,
+        'by_category':         by_category,
+        'by_crew':             by_crew,
+        'escalated_total':     escalated_total,
+        'by_escalation_level': by_escalation_level,
+        'mapped_count':        mapped_count,
+        'unmapped_count':      unmapped_count,
+    })
+
+
+# ── Public stats ────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def public_stats(request):
     """
     GET /api/stats/
-    Returns live aggregated metrics for the public homepage:
-      - total_reports   : total number of tickets ever filed
-      - resolved_count  : tickets with status 'resolved' or 'closed'
-      - avg_response_days: median calendar days from created_at → updated_at
-                           for resolved/closed tickets (rounded to 1 decimal)
-      - community_members: count of registered citizen users
+    Live aggregated metrics for the public homepage.
     """
-    from django.db.models import Count, F, ExpressionWrapper, DurationField
-    from django.db.models.functions import Greatest
+    from django.db.models import F, ExpressionWrapper, DurationField
     import statistics
 
-    total_reports = MaintenanceTicket.objects.count()
-
-    resolved_qs = MaintenanceTicket.objects.filter(
-        status__in=['resolved', 'closed']
-    )
+    total_reports  = MaintenanceTicket.objects.count()
+    resolved_qs    = MaintenanceTicket.objects.filter(status__in=['resolved', 'closed'])
     resolved_count = resolved_qs.count()
 
-    # Compute avg response time in days for resolved/closed tickets
     avg_response_days = None
     if resolved_count > 0:
         durations = resolved_qs.annotate(

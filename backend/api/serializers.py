@@ -6,7 +6,7 @@ from .models import MaintenanceTicket
 User = get_user_model()
 
 
-# ── Auth ───────────────────────────────────────────────────────────────────────
+# ── Auth ────────────────────────────────────────────────────────────────────────
 
 class RegisterSerializer(serializers.ModelSerializer):
     password  = serializers.CharField(write_only=True, validators=[validate_password])
@@ -46,10 +46,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
+    ticket_count = serializers.SerializerMethodField()
+
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications', 'is_active', 'date_joined')
-        read_only_fields = ('id', 'date_joined')
+        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications',
+                  'is_active', 'date_joined', 'ticket_count')
+        read_only_fields = ('id', 'date_joined', 'ticket_count')
+
+    def get_ticket_count(self, obj):
+        """Number of tickets this user has submitted — useful in the admin user list."""
+        return obj.tickets.count()
 
 
 class CreateAdminSerializer(serializers.ModelSerializer):
@@ -84,17 +91,13 @@ class CreateAdminSerializer(serializers.ModelSerializer):
         )
 
 
-# ── Tickets ────────────────────────────────────────────────────────────────────
+# ── Tickets ─────────────────────────────────────────────────────────────────────
 
 class TicketListSerializer(serializers.ModelSerializer):
     """
     Used for GET /api/requests/ list responses.
-
-    Exposes every field consumed by the frontend:
-      IssueCard / ViewRequestsPage : id, title, category, status, description,
-                                     location_description, reporter_name,
-                                     created_at, photo, lat, lng
-      DashboardPage / TicketsPage  : all of the above + updated_at + crew/escalation
+    reporter_name resolves to username for authenticated reporters
+    so the admin list can always show a human-readable name.
     """
     reporter_name = serializers.SerializerMethodField()
 
@@ -119,11 +122,10 @@ class TicketListSerializer(serializers.ModelSerializer):
 class TicketDetailSerializer(serializers.ModelSerializer):
     """
     Used for POST /api/requests/ (create) and GET /api/requests/<id>/.
-
-    Includes the full field set so the admin detail panel and the
-    public success screen can display everything.
+    Includes the full field set plus a resolved reporter display name.
     """
     reporter_display = serializers.SerializerMethodField()
+    reporter_email   = serializers.SerializerMethodField()
 
     class Meta:
         model  = MaintenanceTicket
@@ -147,6 +149,18 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             return obj.reporter_user.username
         return obj.reporter_name or 'Anonymous'
 
+    def get_reporter_email(self, obj):
+        """
+        Return reporter email only to admin/superuser callers.
+        Public callers get None to protect reporter privacy.
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and getattr(request.user, 'is_council_admin', False):
+            if obj.reporter_user:
+                return obj.reporter_user.email
+            return obj.reporter_email
+        return None
+
     def create(self, validated_data):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
@@ -154,20 +168,52 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class MapTicketSerializer(serializers.ModelSerializer):
+    """
+    Minimal serializer for GET /api/map/ — public-safe.
+    Omits reporter PII entirely; only exposes what the map pins need.
+    """
+    class Meta:
+        model  = MaintenanceTicket
+        fields = (
+            'id', 'title', 'category', 'status',
+            'description', 'location_description',
+            'lat', 'lng',
+            'escalated',
+            'created_at',
+        )
+
+
 class TicketStatusSerializer(serializers.ModelSerializer):
     """
-    Used by PATCH /api/requests/<id>/status/
-    Only the status field is writable; returns id + status so the frontend
-    can optimistically update the ticket list without a full refetch.
+    PATCH /api/requests/<id>/status/
+    Validates that the requested transition is legal before saving.
     """
+    VALID_TRANSITIONS = {
+        'pending':     {'in_progress', 'closed'},
+        'in_progress': {'resolved', 'closed'},
+        'resolved':    {'closed'},
+        'closed':      set(),
+    }
+
     class Meta:
         model  = MaintenanceTicket
         fields = ('id', 'status')
 
+    def validate_status(self, value):
+        current = self.instance.status if self.instance else None
+        if current and value not in self.VALID_TRANSITIONS.get(current, set()):
+            allowed = ', '.join(self.VALID_TRANSITIONS.get(current, [])) or 'none'
+            raise serializers.ValidationError(
+                f"Cannot transition from '{current}' to '{value}'. "
+                f"Allowed next statuses: {allowed}."
+            )
+        return value
+
 
 class TicketAssignSerializer(serializers.ModelSerializer):
     """
-    Used by PATCH /api/requests/<id>/assign/
+    PATCH /api/requests/<id>/assign/
     Allows admin to update crew assignment and escalation in one call.
     """
     class Meta:
