@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Search, SlidersHorizontal, X, RefreshCw,
-  AlertTriangle, MapPin, List, LayoutGrid, Map, ChevronRight, SearchX,
+  AlertTriangle, List, LayoutGrid, Map, ChevronRight, SearchX,
 } from 'lucide-react'
-import { CATEGORIES, STATUSES, PAGE_SIZE, CATEGORY_MAP } from '../utils/constants'
+import { CATEGORIES, STATUSES, PAGE_SIZE } from '../utils/constants'
 import { requestsApi } from '../api/client'
 import IssueCard from '../components/IssueCard'
 import SkeletonCard from '../components/SkeletonCard'
@@ -26,20 +26,26 @@ export default function ViewRequestsPage() {
   const [page,         setPage]         = useState(1)
   const [totalCount,   setTotalCount]   = useState(0)
 
+  // Separate state for map — all GPS tickets unpaginated
+  const [mapTickets,     setMapTickets]     = useState([])
+  const [mapLoading,     setMapLoading]     = useState(false)
+  const [mapFetched,     setMapFetched]     = useState(false)
+
+  // ── Paginated list fetch ────────────────────────────────────────────────────
   const fetchIssues = useCallback(async () => {
     setLoading(true); setError(null)
     try {
       const params = { page, page_size: PAGE_SIZE }
-      if (statusFilter !== 'all') params.status = statusFilter
-      if (catFilter    !== 'all') params.category = catFilter
-      if (search.trim()) params.search = search.trim()
+      if (statusFilter !== 'all') params.status   = statusFilter
+      if (catFilter    !== 'all') params.category  = catFilter
+      if (search.trim())          params.search    = search.trim()
       const res  = await requestsApi.list(params)
       const data = res.data
-      const isArr  = Array.isArray(data)
-      const isPag  = data && typeof data === 'object' && Array.isArray(data.results)
+      const isArr = Array.isArray(data)
+      const isPag = data && typeof data === 'object' && Array.isArray(data.results)
       if (!isArr && !isPag) throw new Error('Unexpected response shape from API')
-      if (isArr)  { setIssues(data);         setTotalCount(data.length) }
-      else        { setIssues(data.results); setTotalCount(data.count || data.results.length) }
+      if (isArr) { setIssues(data);         setTotalCount(data.length) }
+      else       { setIssues(data.results); setTotalCount(data.count || data.results.length) }
     } catch (err) {
       setError(err?.userMessage || 'Could not load reports. Please try again.')
       setIssues([])
@@ -47,22 +53,46 @@ export default function ViewRequestsPage() {
     } finally { setLoading(false) }
   }, [page, statusFilter, catFilter, search])
 
+  // ── Map fetch — all tickets with GPS, no pagination ─────────────────────────
+  const fetchMapTickets = useCallback(async () => {
+    setMapLoading(true)
+    try {
+      const params = { page_size: 9999 }
+      if (statusFilter !== 'all') params.status   = statusFilter
+      if (catFilter    !== 'all') params.category  = catFilter
+      if (search.trim())          params.search    = search.trim()
+      const res  = await requestsApi.list(params)
+      const data = res.data
+      const all  = Array.isArray(data) ? data : (data.results || [])
+      setMapTickets(all)
+      setMapFetched(true)
+    } catch {
+      setMapTickets([])
+    } finally { setMapLoading(false) }
+  }, [statusFilter, catFilter, search])
+
   useEffect(() => { fetchIssues() }, [fetchIssues])
   useEffect(() => { setPage(1) },   [statusFilter, catFilter, search])
 
-  const totalPages   = Math.ceil(totalCount / PAGE_SIZE)
+  // Fetch map data when switching to map view, or when filters change while in map view
+  useEffect(() => {
+    if (viewMode === 'map') {
+      setMapFetched(false)
+      fetchMapTickets()
+    }
+  }, [viewMode, statusFilter, catFilter, search])
+
+  const totalPages    = Math.ceil(totalCount / PAGE_SIZE)
   const activeFilters = (statusFilter !== 'all' ? 1 : 0) + (catFilter !== 'all' ? 1 : 0)
+  const clearFilters  = () => { setStatusFilter('all'); setCatFilter('all'); setSearch('') }
 
-  const clearFilters = () => { setStatusFilter('all'); setCatFilter('all'); setSearch('') }
-
-  /* ── Sidebar filter button ── */
   const SidebarBtn = ({ active, onClick, children }) => (
     <button
       onClick={onClick}
       className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm text-left transition-all duration-150"
       style={{
         background: active ? 'var(--accent-light)' : 'transparent',
-        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+        color:      active ? 'var(--accent)' : 'var(--text-secondary)',
         fontWeight: active ? 600 : 400,
       }}
     >
@@ -73,12 +103,15 @@ export default function ViewRequestsPage() {
   return (
     <div>
 
-      {/* ── Page header band ── */}
+      {/* ── Page header ── */}
       <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>
         <div className="section-container py-7">
-          {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-            <Link to="/" style={{ color: 'var(--text-muted)' }} onMouseEnter={(e) => e.currentTarget.style.color='var(--accent)'} onMouseLeave={(e) => e.currentTarget.style.color='var(--text-muted)'}>Home</Link>
+            <Link to="/" style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+              Home
+            </Link>
             <ChevronRight size={12} />
             <span style={{ color: 'var(--text-primary)' }}>Community Reports</span>
           </nav>
@@ -96,57 +129,38 @@ export default function ViewRequestsPage() {
         </div>
       </div>
 
-      {/* ── Main layout: sidebar + content ── */}
+      {/* ── Main layout ── */}
       <div className="section-container py-8">
         <div className="flex gap-7 items-start">
 
-          {/* ═══════════════════════════════════
-              SIDEBAR — always visible on desktop
-          ═══════════════════════════════════ */}
+          {/* Sidebar */}
           <aside className="hidden lg:block w-60 shrink-0 sticky top-24">
             <div className="glass flex flex-col gap-0 overflow-hidden">
-              {/* Sidebar header */}
-              <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ borderBottom: '1px solid var(--divider)' }}
-              >
+              <div className="px-4 py-3 flex items-center justify-between"
+                style={{ borderBottom: '1px solid var(--divider)' }}>
                 <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
                   Filters
                 </span>
                 {activeFilters > 0 && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-xs flex items-center gap-1 transition-colors"
-                    style={{ color: '#ef4444' }}
-                  >
+                  <button onClick={clearFilters} className="text-xs flex items-center gap-1 transition-colors" style={{ color: '#ef4444' }}>
                     <X size={11} /> Clear
                   </button>
                 )}
               </div>
 
-              {/* Search */}
               <div className="p-3" style={{ borderBottom: '1px solid var(--divider)' }}>
                 <p className="form-label mb-1.5 text-xs">Search</p>
                 <div className="relative">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Title, location…"
-                    className="form-input pl-8 text-xs py-2"
-                    style={{ fontSize: '12px' }}
-                  />
+                  <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Title, location…" className="form-input pl-8 text-xs py-2" style={{ fontSize: '12px' }} />
                 </div>
               </div>
 
-              {/* Status filter */}
               <div className="p-3" style={{ borderBottom: '1px solid var(--divider)' }}>
                 <p className="form-label mb-1.5 text-xs">Status</p>
                 <div className="flex flex-col gap-0.5">
-                  <SidebarBtn active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>
-                    All Status
-                  </SidebarBtn>
+                  <SidebarBtn active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>All Status</SidebarBtn>
                   {STATUSES.map((s) => (
                     <SidebarBtn key={s.id} active={statusFilter === s.id} onClick={() => setStatusFilter(s.id)}>
                       <StatusBadge status={s.id} size="sm" />
@@ -155,19 +169,13 @@ export default function ViewRequestsPage() {
                 </div>
               </div>
 
-              {/* Category filter */}
               <div className="p-3">
                 <p className="form-label mb-1.5 text-xs">Category</p>
                 <div className="flex flex-col gap-0.5">
-                  <SidebarBtn active={catFilter === 'all'} onClick={() => setCatFilter('all')}>
-                    All Categories
-                  </SidebarBtn>
+                  <SidebarBtn active={catFilter === 'all'} onClick={() => setCatFilter('all')}>All Categories</SidebarBtn>
                   {CATEGORIES.map((cat) => (
                     <SidebarBtn key={cat.id} active={catFilter === cat.id} onClick={() => setCatFilter(cat.id)}>
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ background: cat.color }}
-                      />
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
                       {cat.label}
                     </SidebarBtn>
                   ))}
@@ -176,34 +184,22 @@ export default function ViewRequestsPage() {
             </div>
           </aside>
 
-          {/* ═══════════════════════════════════
-              MAIN CONTENT
-          ═══════════════════════════════════ */}
+          {/* Main content */}
           <div className="flex-1 min-w-0">
 
             {/* Toolbar */}
-            <div
-              className="flex items-center justify-between mb-5 pb-4"
-              style={{ borderBottom: '1px solid var(--divider)' }}
-            >
+            <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: '1px solid var(--divider)' }}>
               <div className="flex items-center gap-3">
-                {/* Mobile filter toggle */}
-                <button
-                  onClick={() => setShowFilters((v) => !v)}
-                  className="lg:hidden btn-secondary text-sm gap-1.5 px-3 py-2"
-                >
+                <button onClick={() => setShowFilters((v) => !v)} className="lg:hidden btn-secondary text-sm gap-1.5 px-3 py-2">
                   <SlidersHorizontal size={14} />
                   Filters
                   {activeFilters > 0 && (
-                    <span
-                      className="w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
-                      style={{ background: 'var(--accent)' }}
-                    >
+                    <span className="w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center text-white"
+                      style={{ background: 'var(--accent)' }}>
                       {activeFilters}
                     </span>
                   )}
                 </button>
-
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {loading
                     ? 'Loading…'
@@ -213,30 +209,26 @@ export default function ViewRequestsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* View toggle */}
                 <div className="glass-sm flex overflow-hidden">
                   {[
                     { mode: 'list', Icon: List,       label: 'List view' },
                     { mode: 'grid', Icon: LayoutGrid, label: 'Grid view' },
                     { mode: 'map',  Icon: Map,        label: 'Map view'  },
                   ].map(({ mode, Icon, label }) => (
-                    <button
-                      key={mode}
-                      onClick={() => setViewMode(mode)}
-                      title={label}
+                    <button key={mode} onClick={() => setViewMode(mode)} title={label}
                       className="px-3 py-2 transition-colors text-sm"
                       style={viewMode === mode
                         ? { color: 'var(--accent)', background: 'var(--accent-light)' }
                         : { color: 'var(--text-muted)' }
-                      }
-                    >
+                      }>
                       <Icon size={15} />
                     </button>
                   ))}
                 </div>
-
-                <button onClick={fetchIssues} className="btn-ghost px-2.5 py-2" title="Refresh">
-                  <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                <button
+                  onClick={() => viewMode === 'map' ? fetchMapTickets() : fetchIssues()}
+                  className="btn-ghost px-2.5 py-2" title="Refresh">
+                  <RefreshCw size={15} className={(loading || mapLoading) ? 'animate-spin' : ''} />
                 </button>
               </div>
             </div>
@@ -244,18 +236,12 @@ export default function ViewRequestsPage() {
             {/* Mobile filter panel */}
             {showFilters && (
               <div className="glass p-4 mb-5 animate-slide-down lg:hidden">
-                {/* Mobile search */}
                 <div className="mb-3">
                   <p className="form-label">Search</p>
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Title, location…"
-                      className="form-input pl-9"
-                    />
+                    <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Title, location…" className="form-input pl-9" />
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -289,7 +275,7 @@ export default function ViewRequestsPage() {
               </div>
             )}
 
-            {/* Active filter chips (desktop, when sidebar hidden on scroll) */}
+            {/* Active filter chips */}
             {activeFilters > 0 && (
               <div className="hidden lg:flex items-center gap-2 mb-4 flex-wrap">
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Active:</span>
@@ -308,7 +294,7 @@ export default function ViewRequestsPage() {
 
             {/* ── Content area ── */}
             {viewMode === 'map' ? (
-              <PublicMap tickets={issues} loading={loading} />
+              <PublicMap tickets={mapTickets} loading={mapLoading} />
 
             ) : loading ? (
               <div className={`grid gap-4 ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
@@ -347,39 +333,28 @@ export default function ViewRequestsPage() {
 
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between gap-3 mt-8 pt-6" style={{ borderTop: '1px solid var(--divider)' }}>
-                    <button
-                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                      disabled={page === 1}
-                      className="btn-secondary text-sm px-4 py-2 disabled:opacity-40"
-                    >
+                    <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}
+                      className="btn-secondary text-sm px-4 py-2 disabled:opacity-40">
                       ← Previous
                     </button>
-
                     <div className="flex items-center gap-1.5">
                       {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                         const p = i + 1
                         return (
-                          <button
-                            key={p}
-                            onClick={() => setPage(p)}
+                          <button key={p} onClick={() => setPage(p)}
                             className="w-9 h-9 rounded text-sm font-medium transition-all"
                             style={page === p
                               ? { background: 'var(--accent)', color: '#fff' }
                               : { color: 'var(--text-muted)', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }
-                            }
-                          >
+                            }>
                             {p}
                           </button>
                         )
                       })}
                       {totalPages > 7 && <span className="text-sm" style={{ color: 'var(--text-muted)' }}>…</span>}
                     </div>
-
-                    <button
-                      onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                      disabled={page === totalPages}
-                      className="btn-secondary text-sm px-4 py-2 disabled:opacity-40"
-                    >
+                    <button onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages}
+                      className="btn-secondary text-sm px-4 py-2 disabled:opacity-40">
                       Next →
                     </button>
                   </div>
