@@ -136,3 +136,97 @@ Replace the mock AI Log page (which generated fake data client-side) with a real
 - No new Docker containers — runs entirely within the existing backend container
 
 ---
+
+## Citizen Profile Management & Avatar Upload
+
+**Priority:** High
+**Effort:** Medium
+**Status:** ✅ Implemented
+
+Allow authenticated citizens to view and edit their own profile information and upload a profile photo that persists reliably across page refreshes and sessions.
+
+### Acceptance Criteria
+
+- [x] Citizen dashboard displays profile info: name, email, phone, join date
+- [x] Edit mode lets the citizen update first name, last name, username, email, and phone
+- [x] Username and email are validated (min length, format, uniqueness) before saving
+- [x] Email notifications toggle (bell icon) persists to the database and survives page refresh
+- [x] Camera button opens file picker — accepts JPG, PNG, WebP, GIF up to 5 MB
+- [x] Uploading a new photo shows a local preview instantly (before the upload finishes)
+- [x] Avatar is stored in Azure Blob Storage under `avatars/` prefix
+- [x] After upload, the photo displays correctly without a page refresh
+- [x] After page refresh, the photo still displays correctly (no initials flash)
+- [x] After logout and re-login, the photo still displays correctly
+- [x] If the user has no avatar, their username initial is shown as a fallback
+- [x] Uploading a second photo replaces the first (old blob is deleted from Azure)
+- [x] Files larger than 5 MB show a clear error message and are rejected
+- [x] Non-image file types show a clear error message and are rejected
+- [x] Password change section validates current password, enforces 8-char minimum, checks confirm match
+- [x] Password strength indicator updates in real time (weak / fair / strong)
+
+### QA Test Cases
+
+| # | Scenario | Expected Result |
+|---|---|---|
+| 1 | Upload a photo, stay on page | Photo displays immediately via local preview |
+| 2 | Upload a photo, hard refresh (F5) | Photo still shows — loaded via `/api/auth/avatar/` proxy |
+| 3 | Upload a photo, logout, login again | Photo still shows after re-login |
+| 4 | Upload a photo > 5 MB | Error banner: "Avatar must be smaller than 5 MB." |
+| 5 | Upload a non-image file (e.g. `.pdf`) | Error banner: "Please upload a JPG, PNG, WebP, or GIF image." |
+| 6 | Edit name + save | Dashboard shows updated name; changes survive refresh |
+| 7 | Toggle email notifications off, refresh | Toggle remains off |
+| 8 | Change password with mismatched confirm | "Passwords do not match." error, no API call made |
+| 9 | Change password with wrong current password | Backend 400 error displayed to user |
+| 10 | Access `/dashboard` unauthenticated | Redirect to `/login` |
+| 11 | Submit profile edit with username < 3 chars | Inline validation error before API call |
+| 12 | Submit profile edit with duplicate email | Backend 400 error displayed to user |
+
+### Technical Notes
+
+- `GET /api/auth/avatar/` — new proxy endpoint; fetches the blob from Azure server-side using a fresh SAS URL and streams raw bytes back to the browser. Avoids SAS URL expiry in the browser entirely.
+- `POST /api/auth/avatar/` — existing upload endpoint; returns `{ avatar_url }`.
+- `frontend/src/pages/CitizenDashboardPage.jsx` — avatar loaded via `authApi.avatarBlob()` (axios responseType `blob`) into a local `URL.createObjectURL` blob URL. Re-fetches after every upload (`avatarSaving` toggle).
+- `frontend/src/contexts/CitizenAuthContext.jsx` — `cacheAvatar()` persists `avatar_url` to `pfmrs_citizen_profile` in `localStorage` so it survives token refresh cycles.
+- Azure SAS expiry changed from 3 600 s → 86 400 s (24 h) as a secondary safeguard.
+
+---
+
+## Admin User Edit Drawer — Z-index / Stacking Context Fix
+
+**Priority:** High
+**Effort:** Small
+**Status:** ✅ Implemented
+
+The user-edit slide-over panel in the Admin → Users page was "bleeding through" the admin sidebar and top navigation bar due to CSS stacking context trapping caused by `transform` + `transition-all` on the sidebar element.
+
+### Acceptance Criteria
+
+- [x] Clicking "Edit" on any user row opens a right-side drawer
+- [x] The drawer renders on top of all admin UI elements (sidebar, header, any modals)
+- [x] The backdrop darkens the rest of the page
+- [x] Clicking the backdrop closes the drawer
+- [x] Pressing Escape closes the drawer
+- [x] The delete confirmation modal also renders above all elements
+- [x] The drawer does not bleed through the sidebar or top navigation at any viewport width
+- [x] Drawer opens and closes without visual artifacts or z-index conflicts
+
+### QA Test Cases
+
+| # | Scenario | Expected Result |
+|---|---|---|
+| 1 | Click Edit on a user row | Drawer slides in from the right, fully above sidebar |
+| 2 | Open drawer, scroll sidebar | Drawer stays on top |
+| 3 | Click backdrop | Drawer closes smoothly |
+| 4 | Press Escape key while drawer is open | Drawer closes |
+| 5 | Click Delete inside drawer | Delete confirmation modal appears above the drawer |
+| 6 | Dismiss delete modal with Escape | Modal closes; drawer remains open |
+| 7 | Resize window to mobile width | Drawer fills full width, still above all nav elements |
+| 8 | Open drawer, toggle dark/light theme | Drawer background and text update correctly |
+
+### Technical Notes
+
+- `frontend/src/pages/admin/UsersPage.jsx` — `EditDrawer` and `DeleteModal` both use the native `<dialog>` element with `.showModal()`. The HTML `dialog` element is placed in the browser's **top layer**, which is above all CSS stacking contexts regardless of z-index or CSS transforms on parent elements.
+- `frontend/src/index.css` — `dialog::backdrop { background: rgba(0,0,0,0.65); }` styles the browser-managed backdrop.
+- No `createPortal` or z-index escalation required — the browser handles layering natively.
+
+---
