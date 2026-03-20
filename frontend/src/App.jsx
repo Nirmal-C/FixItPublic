@@ -11,6 +11,8 @@ import ViewRequestsPage from './pages/ViewRequestsPage'
 import TrackIssuePage from './pages/TrackIssuePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import CitizenDashboardPage from './pages/CitizenDashboardPage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
@@ -47,6 +49,8 @@ function App() {
           {/* Citizen auth — standalone pages (no Layout sidebar) */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Admin login */}
           <Route path="/admin/login" element={<AdminLoginPage />} />

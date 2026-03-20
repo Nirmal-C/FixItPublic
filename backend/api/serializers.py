@@ -39,10 +39,36 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications', 'date_joined')
-        read_only_fields = ('id', 'role', 'date_joined')
+        fields = (
+            'id', 'username', 'first_name', 'last_name',
+            'email', 'role', 'phone', 'email_notifications',
+            'avatar', 'avatar_url', 'date_joined',
+        )
+        read_only_fields = ('id', 'role', 'date_joined', 'avatar')
+
+    def get_avatar_url(self, obj):
+        if obj.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
+
+    def validate_email(self, value):
+        user = self.instance
+        if user and User.objects.exclude(pk=user.pk).filter(email__iexact=value).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value.lower()
+
+    def validate_username(self, value):
+        user = self.instance
+        if user and User.objects.exclude(pk=user.pk).filter(username__iexact=value).exists():
+            raise serializers.ValidationError('A user with this username already exists.')
+        return value
 
 
 class AdminUserSerializer(serializers.ModelSerializer):

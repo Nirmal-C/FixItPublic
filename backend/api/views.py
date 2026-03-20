@@ -4,7 +4,10 @@ from django.db import connection
 from django.db.models import Q, Count
 from django.core.files.storage import default_storage
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
@@ -691,4 +694,142 @@ class AILogClearView(generics.GenericAPIView):
             'detail': f'Cleared {count} AI log entry(s). Tickets are untouched.',
             'deleted': count,
         })
+
+
+# ── Profile: avatar upload ────────────────────────────────────────────────────
+
+class AvatarUploadView(generics.GenericAPIView):
+    """
+    POST /api/auth/avatar/
+    Accepts multipart/form-data with field 'avatar'.
+    Replaces the current user's avatar and returns the new URL.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        avatar = request.FILES.get('avatar')
+        if not avatar:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed = ('image/jpeg', 'image/png', 'image/webp', 'image/gif')
+        if avatar.content_type not in allowed:
+            return Response({'detail': 'Please upload a JPG, PNG, WebP, or GIF image.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if avatar.size > 5 * 1024 * 1024:
+            return Response({'detail': 'Avatar must be smaller than 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.avatar:
+            try:
+                user.avatar.delete(save=False)
+            except Exception:
+                pass
+
+        user.avatar = avatar
+        user.save(update_fields=['avatar'])
+
+        url = request.build_absolute_uri(user.avatar.url) if user.avatar else None
+        return Response({'avatar_url': url})
+
+
+# ── Profile: change password ──────────────────────────────────────────────────
+
+class ChangePasswordView(generics.GenericAPIView):
+    """
+    POST /api/auth/change-password/
+    Body: { current_password, new_password, confirm_password }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        current  = request.data.get('current_password', '')
+        new_pw   = request.data.get('new_password', '')
+        confirm  = request.data.get('confirm_password', '')
+
+        if not user.check_password(current):
+            return Response({'detail': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_pw) < 8:
+            return Response({'detail': 'New password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_pw != confirm:
+            return Response({'detail': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_pw == current:
+            return Response({'detail': 'New password must be different from your current password.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_pw)
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password updated successfully.'})
+
+
+# ── Forgot password: send reset link ─────────────────────────────────────────
+
+class ForgotPasswordView(generics.GenericAPIView):
+    """
+    POST /api/auth/forgot-password/
+    Body: { email }
+    Always returns 200 to prevent email enumeration.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        from .emails import send_password_reset_email
+        email = request.data.get('email', '').strip().lower()
+        User = get_user_model()
+
+        if not email:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+            uid   = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            site_url = getattr(__import__('django.conf', fromlist=['settings']).settings, 'SITE_URL', 'http://localhost:5173')
+            reset_link = f'{site_url}/reset-password?uid={uid}&token={token}'
+            send_password_reset_email(user, reset_link)
+        except User.DoesNotExist:
+            pass
+
+        return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+
+
+# ── Reset password: validate token + set new password ────────────────────────
+
+class ResetPasswordView(generics.GenericAPIView):
+    """
+    POST /api/auth/reset-password/
+    Body: { uid, token, new_password, confirm_password }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        User  = get_user_model()
+        uid   = request.data.get('uid', '')
+        token = request.data.get('token', '')
+        new_pw  = request.data.get('new_password', '')
+        confirm = request.data.get('confirm_password', '')
+
+        if not uid or not token:
+            return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            pk   = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=pk)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'detail': 'This reset link has expired or already been used.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_pw) < 8:
+            return Response({'detail': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_pw != confirm:
+            return Response({'detail': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_pw)
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password reset successfully. You can now sign in.'})
 
