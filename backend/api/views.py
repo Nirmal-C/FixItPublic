@@ -723,7 +723,7 @@ class AvatarUploadView(generics.GenericAPIView):
                 return Response({'detail': 'Avatar unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             content_type = r.headers.get('Content-Type', 'image/jpeg')
             response = HttpResponse(r.content, content_type=content_type)
-            response['Cache-Control'] = 'private, max-age=86400'
+            response['Cache-Control'] = 'no-store'
             return response
         except Exception:
             return Response({'detail': 'Avatar unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
