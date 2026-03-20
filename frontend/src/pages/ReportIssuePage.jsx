@@ -5,7 +5,7 @@ import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
   Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
-  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles, Bell,
+  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles, Bell, Calendar,
 } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { CATEGORIES, CATEGORY_MAP } from '../utils/constants'
@@ -67,6 +67,7 @@ const INITIAL_FORM = {
   location_description: '',
   lat: null,
   lng: null,
+  incident_datetime: '',
   reporter_name: '',
   reporter_email: '',
   photos: [], // array of File objects, up to MAX_PHOTOS
@@ -740,6 +741,29 @@ export default function ReportIssuePage() {
                     }
                     <span className="form-hint ml-auto">{form.description.length}/500</span>
                   </div>
+                </div>
+
+                {/* When did you see this? */}
+                <div>
+                  <label className="form-label">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar size={14} className="text-indigo-400" />
+                      When did you see this?
+                      <span className="text-slate-500 font-normal text-xs">(optional)</span>
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      type="datetime-local"
+                      value={form.incident_datetime}
+                      max={new Date().toISOString().slice(0, 16)}
+                      onChange={(e) => setForm((prev) => ({ ...prev, incident_datetime: e.target.value }))}
+                      className="form-input pl-8"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                  <p className="form-hint">Leave blank if you're not sure — defaults to now</p>
                 </div>
 
                 <div>
