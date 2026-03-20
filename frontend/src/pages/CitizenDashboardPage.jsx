@@ -62,9 +62,12 @@ export default function CitizenDashboardPage() {
   const [editSuccess, setEditSuccess] = useState('')
 
   // Avatar
-  const [avatarPreview,  setAvatarPreview]  = useState(null)
-  const [avatarSaving,   setAvatarSaving]   = useState(false)
-  const [avatarImgError, setAvatarImgError] = useState(false)
+  const [avatarPreview,    setAvatarPreview]    = useState(null)
+  const [avatarSaving,     setAvatarSaving]     = useState(false)
+  // Track the exact URL that failed to load rather than a simple boolean.
+  // This way, when avatarUrl changes (e.g. fresh SAS URL from the profile API),
+  // the img tag retries automatically even if the URL string didn't previously change.
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState(null)
 
   // Password change
   const [pwSection, setPwSection]   = useState(false)
@@ -97,6 +100,8 @@ export default function CitizenDashboardPage() {
         // Refresh the cache with the new SAS URL so it doesn't expire
         if (profileData.avatar_url) {
           cacheAvatar(profileData.avatar_url)
+          // Clear any prior load failure — the fresh SAS URL from the API should work
+          setFailedAvatarUrl(null)
         }
         setEditForm({
           first_name: profileData.first_name || '',
@@ -150,6 +155,7 @@ export default function CitizenDashboardPage() {
       const res = await authApi.uploadAvatar(form)
       setProfile((p) => ({ ...p, avatar_url: res.data.avatar_url }))
       cacheAvatar(res.data.avatar_url)
+      setFailedAvatarUrl(null)
       setEditSuccess('Profile photo updated.')
     } catch (err) {
       setEditError(err.response?.data?.detail || 'Failed to upload avatar.')
@@ -213,9 +219,6 @@ export default function CitizenDashboardPage() {
 
   const avatarUrl = avatarPreview || profile?.avatar_url || user?.avatar_url
   const initials  = (profile?.username || '?')[0].toUpperCase()
-
-  // Reset image-load error whenever the URL changes (e.g. after a fresh upload)
-  useEffect(() => { setAvatarImgError(false) }, [avatarUrl])
 
   if (loading) return <div className="section-container py-20 flex justify-center"><LoadingSpinner /></div>
 
@@ -317,13 +320,13 @@ export default function CitizenDashboardPage() {
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="relative">
-                    {avatarUrl && !avatarImgError ? (
+                    {avatarUrl && avatarUrl !== failedAvatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt="Avatar"
                         className="w-20 h-20 rounded-full object-cover border-2"
                         style={{ borderColor: 'var(--divider)' }}
-                        onError={() => setAvatarImgError(true)}
+                        onError={() => setFailedAvatarUrl(avatarUrl)}
                       />
                     ) : (
                       <div

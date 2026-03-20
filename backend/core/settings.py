@@ -83,7 +83,7 @@ STORAGES = {
             "account_name":    os.environ.get('AZURE_STORAGE_ACCOUNT_NAME'),
             "account_key":     os.environ.get('AZURE_STORAGE_ACCOUNT_KEY'),
             "azure_container": "maintenance-photos",
-            "expiration_secs": 3600,
+            "expiration_secs": 86400,
         },
     },
     "staticfiles": {
