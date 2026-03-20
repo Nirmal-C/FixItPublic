@@ -112,6 +112,10 @@ class MaintenanceTicket(models.Model):
         related_name='escalated_tickets',
     )
 
+    # Cultural sensitivity — set by cultural_guardian.py after ticket creation
+    cultural_flag = models.BooleanField(default=False)
+    cultural_site = models.CharField(max_length=200, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

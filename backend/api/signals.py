@@ -23,6 +23,7 @@ from django.dispatch import receiver
 
 from .models import MaintenanceTicket
 from .utils import redact_pii
+from .cultural_guardian import check_cultural_sensitivity
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,13 @@ def _analyse_and_save(ticket_id: int) -> None:
         else AILog.Status.SUCCESS
     )
 
+    # ── Cultural sensitivity check ─────────────────────────────────────────────
+    cultural_flagged, cultural_site = check_cultural_sensitivity(ticket.lat, ticket.lng)
+    if cultural_flagged:
+        cultural_note = f'[CULTURAL ALERT] This ticket is located within {cultural_site}, a Wahi Tapu area. Handle with cultural sensitivity and consult with iwi before any works proceed.'
+        decision.setdefault('reasoning', [])
+        decision['reasoning'].insert(0, cultural_note)
+
     # ── Update ticket ─────────────────────────────────────────────────────────
     update_fields = ['assigned_crew']
     ticket.assigned_crew = decision['assigned_crew']
@@ -174,6 +182,11 @@ def _analyse_and_save(ticket_id: int) -> None:
         ticket.escalation_level = decision.get('escalation_level', '')
         ticket.escalation_note  = decision.get('escalation_note', '')
         update_fields += ['escalated', 'escalation_level', 'escalation_note']
+
+    if cultural_flagged:
+        ticket.cultural_flag = True
+        ticket.cultural_site = cultural_site
+        update_fields += ['cultural_flag', 'cultural_site']
 
     ticket.save(update_fields=update_fields)
 
