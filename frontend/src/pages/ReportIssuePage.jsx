@@ -324,6 +324,9 @@ export default function ReportIssuePage() {
       if (allErrors.description) stepErrors.description = allErrors.description
       if (allErrors.location_description) stepErrors.location_description = allErrors.location_description
       if (allErrors.photo) stepErrors.photo = allErrors.photo
+      if (form.incident_datetime && new Date(form.incident_datetime) > new Date()) {
+        stepErrors.incident_datetime = 'Date cannot be in the future.'
+      }
       setErrors((prev) => ({ ...prev, ...stepErrors }))
       return Object.keys(stepErrors).length === 0
     }
@@ -758,12 +761,23 @@ export default function ReportIssuePage() {
                       type="datetime-local"
                       value={form.incident_datetime}
                       max={new Date().toISOString().slice(0, 16)}
-                      onChange={(e) => setForm((prev) => ({ ...prev, incident_datetime: e.target.value }))}
-                      className="form-input pl-8"
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setForm((prev) => ({ ...prev, incident_datetime: val }))
+                        if (val && new Date(val) > new Date()) {
+                          setErrors((prev) => ({ ...prev, incident_datetime: 'Date cannot be in the future.' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, incident_datetime: null }))
+                        }
+                      }}
+                      className={`form-input pl-8 ${errors.incident_datetime ? 'error' : ''}`}
                       style={{ colorScheme: 'dark' }}
                     />
                   </div>
-                  <p className="form-hint">Leave blank if you're not sure — defaults to now</p>
+                  {errors.incident_datetime
+                    ? <p className="form-error"><AlertCircle size={12} />{errors.incident_datetime}</p>
+                    : <p className="form-hint">Leave blank if you're not sure — defaults to now</p>
+                  }
                 </div>
 
                 <div>

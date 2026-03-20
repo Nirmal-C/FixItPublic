@@ -83,18 +83,20 @@ function EditDrawer({ user: u, onClose, onSaved }) {
   return createPortal(
     <>
       {/* Backdrop */}
-      <button
-        type="button"
-        className="fixed inset-0 bg-black/50"
-        style={{ zIndex: 9998 }}
+      <div
+        aria-hidden="true"
         onClick={onClose}
-        aria-label="Close"
+        style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          zIndex: 10000,
+        }}
       />
 
       {/* Drawer */}
       <div
         className="fixed right-0 top-0 bottom-0 w-full max-w-md overflow-y-auto"
-        style={{ zIndex: 9999, background: 'var(--surface)', borderLeft: '1px solid var(--divider)' }}
+        style={{ zIndex: 10001, background: 'var(--surface)', borderLeft: '1px solid var(--divider)' }}
       >
         <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--divider)' }}>
           <div>
@@ -250,8 +252,8 @@ function Toggle({ label, description, on, onToggle }) {
 // ── Delete confirm modal ──────────────────────────────────────────────────────
 function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
   return createPortal(
-    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <button type="button" className="absolute inset-0 bg-black/60" onClick={onCancel} />
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 10001 }}>
+      <div aria-hidden="true" onClick={onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 10000 }} />
       <div className="relative glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
