@@ -81,27 +81,32 @@ export default function CitizenDashboardPage() {
       navigate('/login', { replace: true })
       return
     }
-    Promise.all([
+    // Use allSettled so a failing tickets request doesn't prevent the profile from loading
+    Promise.allSettled([
       requestsApi.mine({ page_size: 100, ordering: '-created_at' }),
       authApi.profile(),
-    ])
-      .then(([ticketsRes, profileRes]) => {
-        setTickets(ticketsRes.data?.results || [])
-        setProfile(profileRes.data)
-        // Refresh the avatar cache with the latest SAS URL from the backend
-        // so the cached URL stays fresh and doesn't expire
-        if (profileRes.data.avatar_url) {
-          cacheAvatar(profileRes.data.avatar_url)
+    ]).then(([ticketsResult, profileResult]) => {
+      if (ticketsResult.status === 'fulfilled') {
+        setTickets(ticketsResult.value.data?.results || [])
+      }
+      if (profileResult.status === 'fulfilled') {
+        const profileData = profileResult.value.data
+        // Prefer fresh URL from API; fall back to cached URL if API returned null
+        const cachedAvatarUrl = user?.avatar_url
+        setProfile({ ...profileData, avatar_url: profileData.avatar_url || cachedAvatarUrl || null })
+        // Refresh the cache with the new SAS URL so it doesn't expire
+        if (profileData.avatar_url) {
+          cacheAvatar(profileData.avatar_url)
         }
         setEditForm({
-          first_name: profileRes.data.first_name || '',
-          last_name:  profileRes.data.last_name  || '',
-          username:   profileRes.data.username   || '',
-          email:      profileRes.data.email      || '',
-          phone:      profileRes.data.phone      || '',
+          first_name: profileData.first_name || '',
+          last_name:  profileData.last_name  || '',
+          username:   profileData.username   || '',
+          email:      profileData.email      || '',
+          phone:      profileData.phone      || '',
         })
-      })
-      .finally(() => setLoading(false))
+      }
+    }).finally(() => setLoading(false))
   }, [isAuthenticated, navigate])
 
   const stats = {
@@ -173,7 +178,8 @@ export default function CitizenDashboardPage() {
     try {
       // updateProfile persists changes to localStorage + user context (1 API call)
       const res = await updateProfile(editForm)
-      setProfile(res.data)
+      // Merge — don't overwrite avatar_url with null if backend had a storage hiccup
+      setProfile((prev) => ({ ...prev, ...res.data, avatar_url: res.data.avatar_url || prev?.avatar_url }))
       if (res.data.avatar_url) cacheAvatar(res.data.avatar_url)
       setEditMode(false)
       setEditSuccess('Profile updated successfully.')
