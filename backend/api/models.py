@@ -12,6 +12,7 @@ class User(AbstractUser):
     role                = models.CharField(max_length=10, choices=Role.choices, default=Role.CITIZEN)
     phone               = models.CharField(max_length=20, blank=True)
     email               = models.EmailField(unique=True)
+    avatar              = models.ImageField(upload_to='avatars/', blank=True, null=True)
     email_notifications = models.BooleanField(
         default=False,
         help_text='Send transactional emails for account events and ticket updates.',
@@ -111,6 +112,10 @@ class MaintenanceTicket(models.Model):
         on_delete=models.SET_NULL,
         related_name='escalated_tickets',
     )
+
+    # Cultural sensitivity — set by cultural_guardian.py after ticket creation
+    cultural_flag = models.BooleanField(default=False)
+    cultural_site = models.CharField(max_length=200, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

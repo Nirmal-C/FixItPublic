@@ -39,24 +39,62 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications', 'date_joined')
-        read_only_fields = ('id', 'role', 'date_joined')
+        fields = (
+            'id', 'username', 'first_name', 'last_name',
+            'email', 'role', 'phone', 'email_notifications',
+            'avatar', 'avatar_url', 'date_joined',
+        )
+        read_only_fields = ('id', 'role', 'date_joined', 'avatar')
+
+    def get_avatar_url(self, obj):
+        try:
+            if obj.avatar:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.avatar.url)
+                return obj.avatar.url
+        except Exception:
+            pass
+        return None
+
+    def validate_email(self, value):
+        user = self.instance
+        if user and User.objects.exclude(pk=user.pk).filter(email__iexact=value).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value.lower()
+
+    def validate_username(self, value):
+        user = self.instance
+        if user and User.objects.exclude(pk=user.pk).filter(username__iexact=value).exists():
+            raise serializers.ValidationError('A user with this username already exists.')
+        return value
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
     ticket_count = serializers.SerializerMethodField()
+    new_password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
 
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications',
-                  'is_active', 'date_joined', 'ticket_count')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'role', 'phone',
+                  'email_notifications', 'is_active', 'date_joined', 'ticket_count', 'new_password')
         read_only_fields = ('id', 'date_joined', 'ticket_count')
 
     def get_ticket_count(self, obj):
         """Number of tickets this user has submitted — useful in the admin user list."""
         return obj.tickets.count()
+
+    def update(self, instance, validated_data):
+        new_password = validated_data.pop('new_password', None)
+        instance = super().update(instance, validated_data)
+        if new_password:
+            instance.set_password(new_password)
+            instance.save(update_fields=['password'])
+        return instance
 
 
 class CreateAdminSerializer(serializers.ModelSerializer):

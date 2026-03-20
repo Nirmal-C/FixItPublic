@@ -310,6 +310,11 @@ html.light {
 }
 .toast { pointer-events: all; }
 
+/* ─── Native dialog backdrop (edit drawer & delete modal) ── */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
 /* ─── Light-mode overrides ───────────────────────────────── */
 
 html.light body  { background-color: var(--bg-primary); }

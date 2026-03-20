@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { X, MapPin, CheckCircle2, Loader2 } from 'lucide-react'
+import { X, MapPin, CheckCircle2, Loader2, Search } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { mapStylesForTheme } from '../utils/googleMapStyles'
 
@@ -48,6 +48,9 @@ export default function LocationPickerModal({
   const [confirming, setConfirming] = useState(false)
   const [picked, setPicked] = useState(null) // {lat, lng}
   const [loadError, setLoadError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   const initialCenter = useMemo(() => {
     if (initialLat != null && initialLng != null) {
@@ -130,6 +133,42 @@ export default function LocationPickerModal({
     mapRef.current.setOptions({ styles: mapStylesForTheme(theme) })
   }, [open, theme])
 
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    if (!q) return
+    setSearching(true)
+    setSearchError('')
+    try {
+      // Use Nominatim for forward geocoding — no API key needed, works on localhost
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=nz`,
+        { headers: { 'Accept-Language': 'en' } }
+      )
+      const data = await res.json()
+      if (!data?.length) {
+        setSearchError('No results found. Try a more specific address.')
+        return
+      }
+      const pos = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      if (mapRef.current) {
+        const maps = await loadGoogleMaps()
+        mapRef.current.panTo(pos)
+        mapRef.current.setZoom(16)
+        if (!markerRef.current) {
+          markerRef.current = new maps.Marker({ map: mapRef.current, position: pos })
+        } else {
+          markerRef.current.setPosition(pos)
+        }
+      }
+      setPicked(pos)
+    } catch {
+      setSearchError('Search failed. Please check your connection and try again.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
   const confirm = async () => {
     if (!picked) return
     setConfirming(true)
@@ -168,7 +207,7 @@ export default function LocationPickerModal({
             <MapPin size={16} className="text-indigo-400" />
             <div>
               <div className="text-sm font-semibold text-slate-100">{title}</div>
-              <div className="text-xs text-slate-400">Click the map to drop a pin</div>
+              <div className="text-xs text-slate-400">Search an address or click the map to drop a pin</div>
             </div>
           </div>
           <button type="button" onClick={onClose} className="btn-secondary px-3 py-2 text-xs gap-1.5">
@@ -177,13 +216,38 @@ export default function LocationPickerModal({
         </div>
 
         <div className="px-5 py-4">
+          {/* Address search bar */}
+          <form onSubmit={handleSearch} className="flex gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setSearchError('') }}
+                placeholder="Search address or landmark…"
+                className="w-full pl-8 pr-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-400/60"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={searching || !searchQuery.trim()}
+              className="btn-secondary px-4 py-2 text-sm gap-1.5 shrink-0"
+            >
+              {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              Search
+            </button>
+          </form>
+          {searchError && (
+            <p className="text-xs text-rose-400 mb-2">{searchError}</p>
+          )}
+
           {loadError ? (
             <div className="text-sm text-rose-300">{loadError}</div>
           ) : (
             <>
               <div
                 ref={mapElRef}
-                style={{ height: 420, borderRadius: 12 }}
+                style={{ height: 380, borderRadius: 12 }}
                 className="border border-white/10"
               />
               {loading && (

@@ -761,3 +761,47 @@ def _send(subject: str, plain: str, html: str, to: list[str]) -> None:
         logger.info('Email sent: "%s" → %s', subject, to)
     except Exception as exc:
         logger.error('Email failed: "%s" → %s | %s', subject, to, exc)
+
+
+def send_password_reset_email(user, reset_link: str) -> None:
+    """Send a password reset link to the user."""
+    subject = 'Reset your FixIt Public password'
+    plain = (
+        f'Hi {user.first_name or user.username},\n\n'
+        f'We received a request to reset your password.\n\n'
+        f'Click the link below to set a new password (valid for 1 hour):\n'
+        f'{reset_link}\n\n'
+        f'If you did not request this, you can safely ignore this email.\n\n'
+        f'— FixIt Public'
+    )
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+      <div style="text-align:center;margin-bottom:28px">
+        <span style="font-size:28px;font-weight:800;color:#2563AA">FixIt</span>
+        <span style="font-size:28px;font-weight:800;color:#1e293b">Public</span>
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:32px">
+        <h2 style="margin:0 0 16px;color:#1e293b;font-size:20px">Reset your password</h2>
+        <p style="color:#475569;margin:0 0 24px">
+          Hi <strong>{user.first_name or user.username}</strong>,<br><br>
+          We received a request to reset the password for your FixIt Public account.
+          Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.
+        </p>
+        <div style="text-align:center;margin-bottom:24px">
+          <a href="{reset_link}"
+             style="display:inline-block;background:#2563AA;color:#fff;text-decoration:none;
+                    padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px">
+            Reset Password
+          </a>
+        </div>
+        <p style="color:#94a3b8;font-size:13px;margin:0">
+          If you didn't request a password reset, you can safely ignore this email.
+          Your password will not be changed.
+        </p>
+      </div>
+      <p style="color:#cbd5e1;font-size:12px;text-align:center;margin-top:24px">
+        © FixIt Public · New Zealand Public Infrastructure Services
+      </p>
+    </div>
+    """
+    _send(subject, plain, html, [user.email])

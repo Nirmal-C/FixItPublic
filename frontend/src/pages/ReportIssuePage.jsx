@@ -5,7 +5,7 @@ import {
   Upload, X, CheckCircle2, AlertCircle, User, Mail,
   MapPin, FileText, Tag, Image as ImageIcon,
   Zap, Trees, Footprints, Construction, Building2, Bus, Paintbrush, HelpCircle,
-  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles, Bell,
+  ChevronRight, Info, Crosshair, Loader2, BrainCircuit, Sparkles, Bell, Calendar,
 } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 import { CATEGORIES, CATEGORY_MAP } from '../utils/constants'
@@ -67,6 +67,7 @@ const INITIAL_FORM = {
   location_description: '',
   lat: null,
   lng: null,
+  incident_datetime: '',
   reporter_name: '',
   reporter_email: '',
   photos: [], // array of File objects, up to MAX_PHOTOS
@@ -323,6 +324,9 @@ export default function ReportIssuePage() {
       if (allErrors.description) stepErrors.description = allErrors.description
       if (allErrors.location_description) stepErrors.location_description = allErrors.location_description
       if (allErrors.photo) stepErrors.photo = allErrors.photo
+      if (form.incident_datetime && new Date(form.incident_datetime) > new Date()) {
+        stepErrors.incident_datetime = 'Date cannot be in the future.'
+      }
       setErrors((prev) => ({ ...prev, ...stepErrors }))
       return Object.keys(stepErrors).length === 0
     }
@@ -742,6 +746,40 @@ export default function ReportIssuePage() {
                   </div>
                 </div>
 
+                {/* When did you see this? */}
+                <div>
+                  <label className="form-label">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar size={14} className="text-indigo-400" />
+                      When did you see this?
+                      <span className="text-slate-500 font-normal text-xs">(optional)</span>
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      type="datetime-local"
+                      value={form.incident_datetime}
+                      max={new Date().toISOString().slice(0, 16)}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setForm((prev) => ({ ...prev, incident_datetime: val }))
+                        if (val && new Date(val) > new Date()) {
+                          setErrors((prev) => ({ ...prev, incident_datetime: 'Date cannot be in the future.' }))
+                        } else {
+                          setErrors((prev) => ({ ...prev, incident_datetime: null }))
+                        }
+                      }}
+                      className={`form-input pl-8 ${errors.incident_datetime ? 'error' : ''}`}
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                  {errors.incident_datetime
+                    ? <p className="form-error"><AlertCircle size={12} />{errors.incident_datetime}</p>
+                    : <p className="form-hint">Leave blank if you're not sure — defaults to now</p>
+                  }
+                </div>
+
                 <div>
                   <label className="form-label">
                     <span className="flex items-center gap-1.5">
@@ -749,32 +787,26 @@ export default function ReportIssuePage() {
                       Location <span className="text-rose-400">*</span>
                     </span>
                   </label>
-                  {/* Location is captured via GPS or a map pin. */}
-                  <div className="flex gap-2 items-start">
-                    <div
-                      className={`form-input flex-1 flex items-center justify-between gap-3 ${errors.location_description ? 'error' : ''}`}
-                      style={{ minHeight: 44 }}
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-500">
-                          {form.lat != null && form.lng != null ? 'Location captured' : 'No location selected'}
-                        </div>
-                        <div className="text-sm text-slate-100 truncate">
-                          {form.location_description
-                            ? form.location_description
-                            : 'Use GPS or pick a spot on the map'}
-                        </div>
-                      </div>
-                      {form.lat != null && form.lng != null
-                        ? <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
-                        : <MapPin size={16} className="shrink-0 text-slate-500" />
-                      }
-                    </div>
+
+                  {/* Address text input */}
+                  <input
+                    type="text"
+                    value={form.location_description}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, location_description: e.target.value }))
+                      setErrors((prev) => ({ ...prev, location_description: null }))
+                    }}
+                    className={`form-input w-full mb-2 ${errors.location_description ? 'error' : ''}`}
+                    placeholder="e.g. 42 Queen Street, Auckland CBD"
+                  />
+
+                  {/* Coordinate capture buttons */}
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={handleGpsClick}
                       disabled={gpsLoading}
-                      className="btn-secondary px-3 py-2.5 shrink-0 gap-1.5 text-xs whitespace-nowrap"
+                      className="btn-secondary flex-1 px-3 py-2.5 gap-1.5 text-xs"
                       title="Capture location using GPS"
                     >
                       {gpsLoading
@@ -786,16 +818,25 @@ export default function ReportIssuePage() {
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
-                      className="btn-secondary px-3 py-2.5 shrink-0 gap-1.5 text-xs whitespace-nowrap"
-                      title="Pick the exact spot on a map"
+                      className="btn-secondary flex-1 px-3 py-2.5 gap-1.5 text-xs"
+                      title="Search address or drop a pin on the map"
                     >
                       <MapPin size={14} />
-                      Pick
+                      Pick on Map
                     </button>
                   </div>
+
+                  {/* Coordinates badge */}
+                  {form.lat != null && form.lng != null && (
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-400">
+                      <CheckCircle2 size={13} />
+                      Coordinates captured · {form.lat.toFixed(5)}, {form.lng.toFixed(5)}
+                    </div>
+                  )}
+
                   {errors.location_description
-                    ? <p className="form-error"><AlertCircle size={13} />{errors.location_description}</p>
-                    : <p className="form-hint">Use GPS or drop a pin to capture the exact location before continuing</p>
+                    ? <p className="form-error mt-1.5"><AlertCircle size={13} />{errors.location_description}</p>
+                    : <p className="form-hint">Type an address, use GPS, or drop a pin on the map</p>
                   }
                 </div>
 

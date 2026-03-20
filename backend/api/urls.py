@@ -9,6 +9,7 @@ from .views import (
     admin_stats,
     map_tickets,
     RegisterView, ProfileView,
+    AvatarUploadView, ChangePasswordView, ForgotPasswordView, ResetPasswordView,
     UserListView, UserCreateView, UserDetailView,
     AdminUserListView,
     TicketListCreateView, TicketDetailView,
@@ -52,7 +53,11 @@ urlpatterns = [
     path('auth/token/',         CustomTokenObtainPairView.as_view(), name='token-obtain'),
     path('auth/token/refresh/', TokenRefreshView.as_view(),          name='token-refresh'),
     path('auth/token/verify/',  TokenVerifyView.as_view(),           name='token-verify'),
-    path('auth/profile/',       ProfileView.as_view(),               name='auth-profile'),
+    path('auth/profile/',          ProfileView.as_view(),          name='auth-profile'),
+    path('auth/avatar/',           AvatarUploadView.as_view(),     name='auth-avatar'),
+    path('auth/change-password/',  ChangePasswordView.as_view(),   name='auth-change-password'),
+    path('auth/forgot-password/',  ForgotPasswordView.as_view(),   name='auth-forgot-password'),
+    path('auth/reset-password/',   ResetPasswordView.as_view(),    name='auth-reset-password'),
 
     # ── Photos ───────────────────────────────────────────────────────────────
     path('photos/<path:path>/', serve_photo, name='serve-photo'),
