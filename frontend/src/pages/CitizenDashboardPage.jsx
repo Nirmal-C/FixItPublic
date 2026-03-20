@@ -62,8 +62,9 @@ export default function CitizenDashboardPage() {
   const [editSuccess, setEditSuccess] = useState('')
 
   // Avatar
-  const [avatarPreview, setAvatarPreview] = useState(null)
-  const [avatarSaving, setAvatarSaving]   = useState(false)
+  const [avatarPreview,  setAvatarPreview]  = useState(null)
+  const [avatarSaving,   setAvatarSaving]   = useState(false)
+  const [avatarImgError, setAvatarImgError] = useState(false)
 
   // Password change
   const [pwSection, setPwSection]   = useState(false)
@@ -114,8 +115,10 @@ export default function CitizenDashboardPage() {
     if (!profile) return
     setNotifSaving(true)
     try {
-      const res = await authApi.updateProfile({ email_notifications: !profile.email_notifications })
-      setProfile(res.data)
+      // Use context updateProfile so the change is persisted to localStorage
+      // and user state is updated (survives refresh)
+      await updateProfile({ email_notifications: !profile.email_notifications })
+      setProfile((p) => p ? { ...p, email_notifications: !p.email_notifications } : p)
     } finally {
       setNotifSaving(false)
     }
@@ -168,8 +171,10 @@ export default function CitizenDashboardPage() {
     setEditError('')
     setEditSuccess('')
     try {
-      const res = await authApi.updateProfile(editForm)
+      // updateProfile persists changes to localStorage + user context (1 API call)
+      const res = await updateProfile(editForm)
       setProfile(res.data)
+      if (res.data.avatar_url) cacheAvatar(res.data.avatar_url)
       setEditMode(false)
       setEditSuccess('Profile updated successfully.')
     } catch (err) {
@@ -202,6 +207,9 @@ export default function CitizenDashboardPage() {
 
   const avatarUrl = avatarPreview || profile?.avatar_url || user?.avatar_url
   const initials  = (profile?.username || '?')[0].toUpperCase()
+
+  // Reset image-load error whenever the URL changes (e.g. after a fresh upload)
+  useEffect(() => { setAvatarImgError(false) }, [avatarUrl])
 
   if (loading) return <div className="section-container py-20 flex justify-center"><LoadingSpinner /></div>
 
@@ -303,12 +311,13 @@ export default function CitizenDashboardPage() {
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="relative">
-                    {avatarUrl ? (
+                    {avatarUrl && !avatarImgError ? (
                       <img
                         src={avatarUrl}
                         alt="Avatar"
                         className="w-20 h-20 rounded-full object-cover border-2"
                         style={{ borderColor: 'var(--divider)' }}
+                        onError={() => setAvatarImgError(true)}
                       />
                     ) : (
                       <div

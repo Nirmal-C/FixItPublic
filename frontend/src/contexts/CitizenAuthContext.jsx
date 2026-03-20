@@ -84,12 +84,13 @@ export function CitizenAuthProvider({ children }) {
    * in localStorage so they survive page refreshes.
    */
   const updateProfile = useCallback(async (changes) => {
-    await authApi.updateProfile(changes)
+    const res = await authApi.updateProfile(changes)
     try {
       const existing = JSON.parse(localStorage.getItem(C_PROFILE) || 'null') || {}
       localStorage.setItem(C_PROFILE, JSON.stringify({ ...existing, ...changes }))
     } catch { /* ignore storage errors */ }
     setUser((prev) => prev ? { ...prev, ...changes } : prev)
+    return res
   }, [])
 
   /**
