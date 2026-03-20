@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Users, UserPlus, Trash2, RefreshCw, ShieldCheck,
   ShieldAlert, User, X, AlertCircle, CheckCircle2, Eye, EyeOff,
@@ -37,9 +36,11 @@ function StatCard({ label, value, color = 'var(--text-primary)' }) {
   )
 }
 
-// ── Edit drawer ───────────────────────────────────────────────────────────────
+// ── Edit drawer — uses native <dialog> (browser top layer, beats all z-index) ──
 function EditDrawer({ user: u, onClose, onSaved }) {
-  const toast = useToast()
+  const toast   = useToast()
+  const dialogRef = useRef(null)
+
   const [form, setForm] = useState({
     username: u.username,
     first_name: u.first_name || '',
@@ -51,9 +52,19 @@ function EditDrawer({ user: u, onClose, onSaved }) {
     email_notifications: u.email_notifications,
     new_password: '',
   })
-  const [errors,    setErrors]    = useState({})
-  const [saving,    setSaving]    = useState(false)
-  const [showPass,  setShowPass]  = useState(false)
+  const [errors,   setErrors]   = useState({})
+  const [saving,   setSaving]   = useState(false)
+  const [showPass, setShowPass] = useState(false)
+
+  // Open the dialog as a modal on mount (puts it in the top layer)
+  useEffect(() => {
+    const d = dialogRef.current
+    if (d && !d.open) d.showModal()
+    // Close when Escape is pressed (native dialog behaviour)
+    const onCancel = (e) => { e.preventDefault(); onClose() }
+    d?.addEventListener('cancel', onCancel)
+    return () => d?.removeEventListener('cancel', onCancel)
+  }, [onClose])
 
   const set = (field) => (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -80,149 +91,141 @@ function EditDrawer({ user: u, onClose, onSaved }) {
     }
   }
 
-  return createPortal(
-    <>
-      {/* Backdrop — sits directly in body stacking context, no wrapper */}
-      <div
-        aria-hidden="true"
-        onClick={onClose}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99997 }}
-      />
+  return (
+    <dialog
+      ref={dialogRef}
+      onClick={(e) => { if (e.target === dialogRef.current) onClose() }}
+      style={{
+        position: 'fixed', margin: 0, padding: 0, border: 'none', outline: 'none',
+        top: 0, right: 0, bottom: 0, left: 'auto',
+        width: '100%', maxWidth: '28rem', height: '100vh', maxHeight: '100vh',
+        background: 'var(--bg-secondary, #0f172a)',
+        borderLeft: '1px solid var(--divider, rgba(255,255,255,0.08))',
+        overflowY: 'auto',
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--divider)' }}>
+        <div>
+          <div className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Edit User</div>
+          <div className="text-xs text-slate-400 mt-0.5">{u.username}</div>
+        </div>
+        <button onClick={onClose} className="btn-ghost p-2"><X size={16} /></button>
+      </div>
 
-      {/* Drawer */}
-      <div
-        className="overflow-y-auto"
-        style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0,
-          width: '100%', maxWidth: '28rem',
-          zIndex: 99998,
-          background: 'var(--surface)',
-          borderLeft: '1px solid var(--divider)',
-        }}
-      >
-        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--divider)' }}>
+      <form onSubmit={handleSave} className="px-6 py-5 flex flex-col gap-5" style={{ flex: 1 }}>
+
+        {/* Name row */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Edit User</div>
-            <div className="text-xs text-slate-400 mt-0.5">{u.username}</div>
+            <label className="form-label">First name</label>
+            <input value={form.first_name} onChange={set('first_name')} className="form-input" placeholder="First" />
           </div>
-          <button onClick={onClose} className="btn-ghost p-2"><X size={16} /></button>
+          <div>
+            <label className="form-label">Last name</label>
+            <input value={form.last_name} onChange={set('last_name')} className="form-input" placeholder="Last" />
+          </div>
         </div>
 
-        <form onSubmit={handleSave} className="px-6 py-5 flex flex-col gap-5">
-
-          {/* Name row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="form-label">First name</label>
-              <input value={form.first_name} onChange={set('first_name')} className="form-input" placeholder="First" />
-            </div>
-            <div>
-              <label className="form-label">Last name</label>
-              <input value={form.last_name} onChange={set('last_name')} className="form-input" placeholder="Last" />
-            </div>
-          </div>
-
-          {/* Username */}
-          <div>
-            <label className="form-label">Username <span className="text-rose-400">*</span></label>
-            <div className="relative">
-              <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                value={form.username} onChange={set('username')}
-                className={`form-input pl-8 ${errors.username ? 'error' : ''}`}
-                placeholder="username" autoComplete="off"
-              />
-            </div>
-            {errors.username && <p className="form-error"><AlertCircle size={12} />{errors.username}</p>}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="form-label">Email <span className="text-rose-400">*</span></label>
-            <div className="relative">
-              <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="email" value={form.email} onChange={set('email')}
-                className={`form-input pl-8 ${errors.email ? 'error' : ''}`}
-                placeholder="user@example.com"
-              />
-            </div>
-            {errors.email && <p className="form-error"><AlertCircle size={12} />{errors.email}</p>}
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="form-label">Phone</label>
-            <div className="relative">
-              <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                value={form.phone} onChange={set('phone')}
-                className="form-input pl-8" placeholder="+64 9 000 0000"
-              />
-            </div>
-          </div>
-
-          {/* Role */}
-          <div>
-            <label className="form-label">Role <span className="text-rose-400">*</span></label>
-            <div className="relative">
-              <select value={form.role} onChange={set('role')} className="form-input pr-8 appearance-none">
-                <option value="citizen">Citizen</option>
-                <option value="admin">Admin</option>
-                <option value="superuser">Superuser</option>
-              </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Toggles */}
-          <div className="flex flex-col gap-3">
-            <Toggle
-              label="Account Active"
-              description="Inactive users cannot log in"
-              on={form.is_active}
-              onToggle={() => setForm((p) => ({ ...p, is_active: !p.is_active }))}
-            />
-            <Toggle
-              label="Email Notifications"
-              description="Receive status-update emails"
-              on={form.email_notifications}
-              onToggle={() => setForm((p) => ({ ...p, email_notifications: !p.email_notifications }))}
+        {/* Username */}
+        <div>
+          <label className="form-label">Username <span className="text-rose-400">*</span></label>
+          <div className="relative">
+            <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              value={form.username} onChange={set('username')}
+              className={`form-input pl-8 ${errors.username ? 'error' : ''}`}
+              placeholder="username" autoComplete="off"
             />
           </div>
+          {errors.username && <p className="form-error"><AlertCircle size={12} />{errors.username}</p>}
+        </div>
 
-          {/* Password reset */}
-          <div style={{ borderTop: '1px solid var(--divider)', paddingTop: 16 }}>
-            <label className="form-label flex items-center gap-1.5">
-              <KeyRound size={13} className="text-indigo-400" />
-              New Password <span className="text-slate-500 font-normal">(leave blank to keep unchanged)</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPass ? 'text' : 'password'}
-                value={form.new_password} onChange={set('new_password')}
-                className={`form-input pr-10 ${errors.new_password ? 'error' : ''}`}
-                placeholder="min 8 characters"
-                autoComplete="new-password"
-              />
-              <button type="button" onClick={() => setShowPass((v) => !v)} className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1">
-                {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-              </button>
-            </div>
-            {errors.new_password && <p className="form-error"><AlertCircle size={12} />{errors.new_password}</p>}
+        {/* Email */}
+        <div>
+          <label className="form-label">Email <span className="text-rose-400">*</span></label>
+          <div className="relative">
+            <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="email" value={form.email} onChange={set('email')}
+              className={`form-input pl-8 ${errors.email ? 'error' : ''}`}
+              placeholder="user@example.com"
+            />
           </div>
+          {errors.email && <p className="form-error"><AlertCircle size={12} />{errors.email}</p>}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
-            <button type="submit" className="btn-primary flex-1 text-sm gap-2" disabled={saving}>
-              {saving ? 'Saving…' : <><CheckCircle2 size={14} /> Save Changes</>}
+        {/* Phone */}
+        <div>
+          <label className="form-label">Phone</label>
+          <div className="relative">
+            <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              value={form.phone} onChange={set('phone')}
+              className="form-input pl-8" placeholder="+64 9 000 0000"
+            />
+          </div>
+        </div>
+
+        {/* Role */}
+        <div>
+          <label className="form-label">Role <span className="text-rose-400">*</span></label>
+          <div className="relative">
+            <select value={form.role} onChange={set('role')} className="form-input pr-8 appearance-none">
+              <option value="citizen">Citizen</option>
+              <option value="admin">Admin</option>
+              <option value="superuser">Superuser</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Toggles */}
+        <div className="flex flex-col gap-3">
+          <Toggle
+            label="Account Active"
+            description="Inactive users cannot log in"
+            on={form.is_active}
+            onToggle={() => setForm((p) => ({ ...p, is_active: !p.is_active }))}
+          />
+          <Toggle
+            label="Email Notifications"
+            description="Receive status-update emails"
+            on={form.email_notifications}
+            onToggle={() => setForm((p) => ({ ...p, email_notifications: !p.email_notifications }))}
+          />
+        </div>
+
+        {/* Password reset */}
+        <div style={{ borderTop: '1px solid var(--divider)', paddingTop: 16 }}>
+          <label className="form-label flex items-center gap-1.5">
+            <KeyRound size={13} className="text-indigo-400" />
+            New Password <span className="text-slate-500 font-normal">(leave blank to keep unchanged)</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPass ? 'text' : 'password'}
+              value={form.new_password} onChange={set('new_password')}
+              className={`form-input pr-10 ${errors.new_password ? 'error' : ''}`}
+              placeholder="min 8 characters"
+              autoComplete="new-password"
+            />
+            <button type="button" onClick={() => setShowPass((v) => !v)} className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1">
+              {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
             </button>
           </div>
-        </form>
-      </div>
-    </>,
-    document.body
+          {errors.new_password && <p className="form-error"><AlertCircle size={12} />{errors.new_password}</p>}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
+          <button type="submit" className="btn-primary flex-1 text-sm gap-2" disabled={saving}>
+            {saving ? 'Saving…' : <><CheckCircle2 size={14} /> Save Changes</>}
+          </button>
+        </div>
+      </form>
+    </dialog>
   )
 }
 
@@ -251,13 +254,28 @@ function Toggle({ label, description, on, onToggle }) {
   )
 }
 
-// ── Delete confirm modal ──────────────────────────────────────────────────────
+// ── Delete confirm modal — uses native <dialog> (top layer) ──────────────────
 function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
-  return createPortal(
-    <>
-      <div aria-hidden="true" onClick={onCancel} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99997 }} />
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', pointerEvents: 'none' }}>
-      <div className="glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ pointerEvents: 'auto', border: '1px solid rgba(239,68,68,0.3)' }}>
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    const d = dialogRef.current
+    if (d && !d.open) d.showModal()
+    const onCancel2 = (e) => { e.preventDefault(); onCancel() }
+    d?.addEventListener('cancel', onCancel2)
+    return () => d?.removeEventListener('cancel', onCancel2)
+  }, [onCancel])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClick={(e) => { if (e.target === dialogRef.current) onCancel() }}
+      style={{
+        border: 'none', outline: 'none', padding: 0, background: 'transparent',
+        maxWidth: '24rem', width: '100%',
+      }}
+    >
+      <div className="glass p-6 rounded-2xl flex flex-col gap-4" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
             <Trash2 size={18} style={{ color: '#ef4444' }} />
@@ -283,9 +301,7 @@ function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
           </button>
         </div>
       </div>
-      </div>
-    </>,
-    document.body
+    </dialog>
   )
 }
 
