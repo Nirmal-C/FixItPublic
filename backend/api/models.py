@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.contrib.gis.db import models as gis_models
-from django.contrib.gis.geos import Point
 
 
 class User(AbstractUser):
@@ -94,12 +92,6 @@ class MaintenanceTicket(models.Model):
     )
     lat        = models.FloatField(null=True, blank=True, help_text='Latitude of the reported issue')
     lng        = models.FloatField(null=True, blank=True, help_text='Longitude of the reported issue')
-    location   = gis_models.PointField(geography=True, null=True, blank=True, srid=4326,
-                                       help_text='PostGIS point derived from lat/lng')
-
-    # Cultural sensitivity flag — set by Cultural Guardian
-    cultural_flag = models.BooleanField(default=False)
-    cultural_site = models.CharField(max_length=200, blank=True)
 
     # Crew assignment — auto-set on creation, editable by admin
     assigned_crew = models.CharField(
@@ -125,23 +117,6 @@ class MaintenanceTicket(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-    def save(self, *args, **kwargs):
-        if self.lat is not None and self.lng is not None:
-            self.location = Point(self.lng, self.lat, srid=4326)
-        super().save(*args, **kwargs)
-
-    @classmethod
-    def find_nearby_duplicate(cls, category, lat, lng, radius_m=50):
-        from django.contrib.gis.measure import D
-        if lat is None or lng is None:
-            return None
-        pt = Point(lng, lat, srid=4326)
-        return cls.objects.filter(
-            location__distance_lte=(pt, D(m=radius_m)),
-            category=category,
-            status__in=['pending', 'in_progress'],
-        ).exclude(location=None).first()
 
     def __str__(self):
         return f'#{self.pk} {self.title}'

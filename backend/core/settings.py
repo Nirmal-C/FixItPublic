@@ -18,7 +18,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
-    'django.contrib.gis',          # GeoDjango — required for PostGIS PointField
     'storages',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -60,7 +59,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # ── 4. Database ────────────────────────────────────────────────────────────────
 DATABASES = {
     'default': {
-        'ENGINE':   'django.contrib.gis.db.backends.postgis',
+        'ENGINE':   'django.db.backends.postgresql',
         'NAME':     os.environ.get('DB_NAME'),
         'USER':     os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'),

@@ -10,7 +10,7 @@ import {
 import { useNotifications } from '../hooks/useNotifications'
 import { CATEGORIES, CATEGORY_MAP } from '../utils/constants'
 import { validateReportForm, isFormValid } from '../utils/validation'
-import { requestsApi, uploadApi } from '../api/client'
+import { requestsApi } from '../api/client'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useToast } from '../components/Toast'
 import LocationPickerModal from '../components/LocationPickerModal'
@@ -336,8 +336,6 @@ export default function ReportIssuePage() {
   }
   const prevStep = () => { setErrors({}); setStep((s) => Math.max(s - 1, 1)) }
 
-  const [uploadProgress, setUploadProgress] = useState(0) // 0–100
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     const allErrors = validateReportForm(form)
@@ -348,62 +346,17 @@ export default function ReportIssuePage() {
     }
 
     setSubmitting(true)
-    setUploadProgress(0)
     try {
-      // For authenticated users with photos, upload directly to Azure via SAS URLs
-      const photos = Array.isArray(form.photos)
-        ? form.photos.filter((p) => p instanceof File).slice(0, 5)
-        : form.photo instanceof File ? [form.photo] : []
-
-      let submissionData = form
-
-      if (citizen && photos.length > 0) {
-        // Direct-to-cloud upload path
-        const blobNames = []
-        for (let i = 0; i < photos.length; i++) {
-          const file = photos[i]
-          try {
-            const sasRes = await uploadApi.getSasUrl(file.name)
-            await uploadApi.directUpload(sasRes.data.upload_url, file)
-            blobNames.push(sasRes.data.blob_name)
-          } catch {
-            // Fall back to standard multipart upload if SAS fails
-            blobNames.push(null)
-          }
-          setUploadProgress(Math.round(((i + 1) / photos.length) * 80))
-        }
-
-        const successfulBlobs = blobNames.filter(Boolean)
-        if (successfulBlobs.length === photos.length) {
-          // All photos uploaded directly — send blob names to backend
-          const { photos: _p, photo: _ph, photo2: _p2, photo3: _p3, photo4: _p4, photo5: _p5, ...rest } = form
-          submissionData = { ...rest, photo_paths: successfulBlobs }
-        }
-        // If any failed, fall through to standard multipart upload below
-      }
-
-      setUploadProgress(90)
-      const res = await requestsApi.create(submissionData)
-      setUploadProgress(100)
+      const res = await requestsApi.create(form)
       setSubmittedId(res.data?.id)
       setSubmitted(true)
       setAiPhase('analysing')
       toast.success('Report submitted successfully!', { title: 'Thank you!' })
       fireSubmissionNotifications(res.data?.id)
     } catch (err) {
-      const detail = err?.response?.data?.detail || ''
-      if (detail && err?.response?.data?.duplicate) {
-        const existingId = err?.response?.data?.existing_id
-        toast.error(
-          `A similar report already exists nearby${existingId ? ` (#${existingId})` : ''}.`,
-          { title: 'Duplicate report' }
-        )
-      } else {
-        toast.error('Could not reach the server. Please check your connection and try again.', { title: 'Submission failed' })
-      }
+      toast.error('Could not reach the server. Please check your connection and try again.', { title: 'Submission failed' })
     } finally {
       setSubmitting(false)
-      setUploadProgress(0)
     }
   }
 

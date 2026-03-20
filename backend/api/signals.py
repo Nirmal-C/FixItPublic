@@ -23,7 +23,6 @@ from django.dispatch import receiver
 
 from .models import MaintenanceTicket
 from .utils import redact_pii
-from .cultural_guardian import check_cultural_sensitivity
 
 logger = logging.getLogger(__name__)
 
@@ -92,17 +91,6 @@ def _analyse_and_save(ticket_id: int) -> None:
         logger.error('Signal: ticket #%s not found', ticket_id)
         return
 
-    # ── Cultural sensitivity check ────────────────────────────────────────────
-    cultural = check_cultural_sensitivity(ticket.lat, ticket.lng)
-    if cultural['is_sensitive']:
-        ticket.cultural_flag = True
-        ticket.cultural_site = cultural['site_name'] or ''
-        ticket.save(update_fields=['cultural_flag', 'cultural_site'])
-        logger.info(
-            'Ticket #%s flagged as culturally sensitive — site: %s',
-            ticket_id, cultural['site_name']
-        )
-
     # ── Get API key from environment ──────────────────────────────────────────
     api_key = os.environ.get('OPENAI_API_KEY')
 
@@ -130,13 +118,6 @@ def _analyse_and_save(ticket_id: int) -> None:
 
     # ── Call GPT-4o ───────────────────────────────────────────────────────────
     system_prompt = SYSTEM_PROMPT
-    if cultural['is_sensitive']:
-        system_prompt = (
-            f'⚠️ CULTURAL SENSITIVITY ALERT: This ticket is located within '
-            f'"{cultural["site_name"]}", a registered Wāhi Tapu zone. '
-            'Escalate to council_manager minimum and note cultural considerations.\n\n'
-            + SYSTEM_PROMPT
-        )
 
     try:
         response = client.chat.completions.create(
