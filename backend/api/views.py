@@ -700,11 +700,33 @@ class AILogClearView(generics.GenericAPIView):
 
 class AvatarUploadView(generics.GenericAPIView):
     """
-    POST /api/auth/avatar/
-    Accepts multipart/form-data with field 'avatar'.
-    Replaces the current user's avatar and returns the new URL.
+    GET  /api/auth/avatar/ — proxy-stream the current user's avatar image.
+    POST /api/auth/avatar/ — upload a new avatar (multipart/form-data, field 'avatar').
+
+    The GET method fetches the image from Azure on the server side and streams it
+    back so the browser never needs a SAS URL directly. This avoids expiry,
+    CORS, and credential issues entirely.
     """
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not user.avatar:
+            return Response({'detail': 'No avatar.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            sas_url = user.avatar.url  # fresh SAS URL, generated server-side
+        except Exception:
+            return Response({'detail': 'Avatar unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        try:
+            r = http_requests.get(sas_url, timeout=10, stream=True)
+            if not r.ok:
+                return Response({'detail': 'Avatar unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            content_type = r.headers.get('Content-Type', 'image/jpeg')
+            response = HttpResponse(r.content, content_type=content_type)
+            response['Cache-Control'] = 'private, max-age=86400'
+            return response
+        except Exception:
+            return Response({'detail': 'Avatar unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def post(self, request, *args, **kwargs):
         user = request.user

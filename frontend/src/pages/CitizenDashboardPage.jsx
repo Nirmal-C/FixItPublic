@@ -62,12 +62,11 @@ export default function CitizenDashboardPage() {
   const [editSuccess, setEditSuccess] = useState('')
 
   // Avatar
-  const [avatarPreview,    setAvatarPreview]    = useState(null)
-  const [avatarSaving,     setAvatarSaving]     = useState(false)
-  // Track the exact URL that failed to load rather than a simple boolean.
-  // This way, when avatarUrl changes (e.g. fresh SAS URL from the profile API),
-  // the img tag retries automatically even if the URL string didn't previously change.
-  const [failedAvatarUrl, setFailedAvatarUrl] = useState(null)
+  const [avatarPreview,  setAvatarPreview]  = useState(null)
+  const [avatarSaving,   setAvatarSaving]   = useState(false)
+  // Blob URL created by fetching /api/auth/avatar/ with auth header.
+  // Never expires (local object URL). Refreshed after each upload.
+  const [avatarBlobUrl,  setAvatarBlobUrl]  = useState(null)
 
   // Password change
   const [pwSection, setPwSection]   = useState(false)
@@ -94,14 +93,9 @@ export default function CitizenDashboardPage() {
       }
       if (profileResult.status === 'fulfilled') {
         const profileData = profileResult.value.data
-        // Prefer fresh URL from API; fall back to cached URL if API returned null
-        const cachedAvatarUrl = user?.avatar_url
-        setProfile({ ...profileData, avatar_url: profileData.avatar_url || cachedAvatarUrl || null })
-        // Refresh the cache with the new SAS URL so it doesn't expire
+        setProfile(profileData)
         if (profileData.avatar_url) {
           cacheAvatar(profileData.avatar_url)
-          // Clear any prior load failure — the fresh SAS URL from the API should work
-          setFailedAvatarUrl(null)
         }
         setEditForm({
           first_name: profileData.first_name || '',
@@ -113,6 +107,21 @@ export default function CitizenDashboardPage() {
       }
     }).finally(() => setLoading(false))
   }, [isAuthenticated, navigate])
+
+  // Fetch avatar via the authenticated proxy endpoint so we never depend on
+  // a time-limited SAS URL in the browser. Re-runs whenever the user uploads
+  // a new photo (avatarSaving toggles false → triggers re-fetch via key change).
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let objectUrl = null
+    authApi.avatarBlob()
+      .then((res) => {
+        objectUrl = URL.createObjectURL(res.data)
+        setAvatarBlobUrl(objectUrl)
+      })
+      .catch(() => setAvatarBlobUrl(null))
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [isAuthenticated, avatarSaving]) // re-fetch after every upload completes
 
   const stats = {
     total:       tickets.length,
@@ -154,8 +163,8 @@ export default function CitizenDashboardPage() {
       form.append('avatar', file)
       const res = await authApi.uploadAvatar(form)
       setProfile((p) => ({ ...p, avatar_url: res.data.avatar_url }))
-      cacheAvatar(res.data.avatar_url)
-      setFailedAvatarUrl(null)
+      if (res.data.avatar_url) cacheAvatar(res.data.avatar_url)
+      // avatarSaving flips false → re-triggers the blob-fetch useEffect
       setEditSuccess('Profile photo updated.')
     } catch (err) {
       setEditError(err.response?.data?.detail || 'Failed to upload avatar.')
@@ -217,7 +226,9 @@ export default function CitizenDashboardPage() {
     }
   }
 
-  const avatarUrl = avatarPreview || profile?.avatar_url || user?.avatar_url
+  // avatarPreview: local blob after file-pick (instant feedback before upload finishes)
+  // avatarBlobUrl: fetched via authenticated proxy, never expires
+  const avatarUrl = avatarPreview || avatarBlobUrl || null
   const initials  = (profile?.username || '?')[0].toUpperCase()
 
   if (loading) return <div className="section-container py-20 flex justify-center"><LoadingSpinner /></div>
@@ -320,13 +331,12 @@ export default function CitizenDashboardPage() {
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="relative">
-                    {avatarUrl && avatarUrl !== failedAvatarUrl ? (
+                    {avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt="Avatar"
                         className="w-20 h-20 rounded-full object-cover border-2"
                         style={{ borderColor: 'var(--divider)' }}
-                        onError={() => setFailedAvatarUrl(avatarUrl)}
                       />
                     ) : (
                       <div

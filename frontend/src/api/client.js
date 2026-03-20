@@ -125,6 +125,7 @@ export const authApi = {
   profile:        ()        => apiClient.get('/api/auth/profile/'),
   updateProfile:  (changes) => apiClient.patch('/api/auth/profile/', changes),
   uploadAvatar:   (form)    => apiClient.post('/api/auth/avatar/', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  avatarBlob:     ()        => apiClient.get('/api/auth/avatar/', { responseType: 'blob' }),
   changePassword: (data)    => apiClient.post('/api/auth/change-password/', data),
   forgotPassword: (data)    => apiClient.post('/api/auth/forgot-password/', data),
   resetPassword:  (data)    => apiClient.post('/api/auth/reset-password/', data),
