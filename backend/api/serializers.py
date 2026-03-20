@@ -73,16 +73,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class AdminUserSerializer(serializers.ModelSerializer):
     ticket_count = serializers.SerializerMethodField()
+    new_password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
 
     class Meta:
         model  = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'email_notifications',
-                  'is_active', 'date_joined', 'ticket_count')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'role', 'phone',
+                  'email_notifications', 'is_active', 'date_joined', 'ticket_count', 'new_password')
         read_only_fields = ('id', 'date_joined', 'ticket_count')
 
     def get_ticket_count(self, obj):
         """Number of tickets this user has submitted — useful in the admin user list."""
         return obj.tickets.count()
+
+    def update(self, instance, validated_data):
+        new_password = validated_data.pop('new_password', None)
+        instance = super().update(instance, validated_data)
+        if new_password:
+            instance.set_password(new_password)
+            instance.save(update_fields=['password'])
+        return instance
 
 
 class CreateAdminSerializer(serializers.ModelSerializer):
