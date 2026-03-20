@@ -3,7 +3,7 @@ import './App.css'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './components/Toast'
 import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext'
-import { CitizenAuthProvider } from './contexts/CitizenAuthContext'
+import { CitizenAuthProvider, useCitizenAuth } from './contexts/CitizenAuthContext'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import ReportIssuePage from './pages/ReportIssuePage'
@@ -27,6 +27,12 @@ function HomeRedirect() {
   return <HomePage />
 }
 
+function PrivateRoute({ children }) {
+  const { isAuthenticated } = useCitizenAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  return children
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -42,7 +48,7 @@ function App() {
             <Route path="requests" element={<ViewRequestsPage />} />
             <Route path="track" element={<TrackIssuePage />} />
             <Route path="track/:id" element={<TrackIssuePage />} />
-            <Route path="dashboard" element={<CitizenDashboardPage />} />
+            <Route path="dashboard" element={<PrivateRoute><CitizenDashboardPage /></PrivateRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
 
