@@ -141,6 +141,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
+                  key={showPass ? 'pw-text' : 'pw-pass'}
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
                   onChange={set('password')}

@@ -54,6 +54,7 @@ export function CitizenAuthProvider({ children }) {
     }
 
     localStorage.setItem(C_REFRESH, refresh)
+    localStorage.removeItem(C_PROFILE) // clear any cached profile overrides from a previous user
     _setFromToken(access)
   }, [_setFromToken])
 

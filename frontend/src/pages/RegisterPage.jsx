@@ -68,8 +68,10 @@ export default function RegisterPage() {
     else if (!/^[\w.@+-]+$/.test(form.username)) e.username = 'Username may only contain letters, numbers, and @/./+/-/_'
     if (!form.email.trim())             e.email    = 'Email address is required.'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address.'
-    if (!form.password)                 e.password = 'Password is required.'
-    else if (form.password.length < 8)  e.password = 'Password must be at least 8 characters.'
+    if (!form.password)                           e.password = 'Password is required.'
+    else if (form.password.length < 8)            e.password = 'Password must be at least 8 characters.'
+    else if (!/[A-Z]/.test(form.password))        e.password = 'Password must contain at least one uppercase letter.'
+    else if (!/[0-9]/.test(form.password))        e.password = 'Password must contain at least one number.'
     if (!form.confirm)                  e.confirm  = 'Please confirm your password.'
     else if (form.confirm !== form.password) e.confirm = 'Passwords do not match.'
     return e
@@ -91,7 +93,7 @@ export default function RegisterPage() {
         email_notifications: form.email_notifications,
       })
       toast.success('Account created successfully!', { title: 'Welcome!' })
-      navigate('/', { replace: true })
+      navigate('/login', { replace: true })
     } catch (err) {
       const data = err?.response?.data
       if (data && typeof data === 'object') {
@@ -267,7 +269,7 @@ export default function RegisterPage() {
                   className="w-5 h-5 rounded flex items-center justify-center transition-all duration-150"
                   style={{
                     background: form.email_notifications ? '#6366f1' : 'transparent',
-                    border: `2px solid ${form.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.15)'}`,
+                    border: `2px solid ${form.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.4)'}`,
                   }}
                 >
                   {form.email_notifications && (
