@@ -51,11 +51,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'role', 'date_joined', 'avatar')
 
     def get_avatar_url(self, obj):
-        if obj.avatar:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.avatar.url)
-            return obj.avatar.url
+        try:
+            if obj.avatar:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.avatar.url)
+                return obj.avatar.url
+        except Exception:
+            pass
         return None
 
     def validate_email(self, value):

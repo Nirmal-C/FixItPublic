@@ -45,7 +45,7 @@ function PasswordStrength({ pw }) {
 }
 
 export default function CitizenDashboardPage() {
-  const { citizen, isAuthenticated, updateProfile } = useCitizenAuth()
+  const { user, isAuthenticated, updateProfile, cacheAvatar } = useCitizenAuth()
   const navigate = useNavigate()
   const avatarInputRef = useRef(null)
 
@@ -136,6 +136,7 @@ export default function CitizenDashboardPage() {
       form.append('avatar', file)
       const res = await authApi.uploadAvatar(form)
       setProfile((p) => ({ ...p, avatar_url: res.data.avatar_url }))
+      cacheAvatar(res.data.avatar_url)
       setEditSuccess('Profile photo updated.')
     } catch (err) {
       setEditError(err.response?.data?.detail || 'Failed to upload avatar.')
@@ -194,7 +195,7 @@ export default function CitizenDashboardPage() {
     }
   }
 
-  const avatarUrl = avatarPreview || profile?.avatar_url
+  const avatarUrl = avatarPreview || profile?.avatar_url || user?.avatar_url
   const initials  = (profile?.username || '?')[0].toUpperCase()
 
   if (loading) return <div className="section-container py-20 flex justify-center"><LoadingSpinner /></div>

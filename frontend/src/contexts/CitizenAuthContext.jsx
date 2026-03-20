@@ -92,10 +92,23 @@ export function CitizenAuthProvider({ children }) {
     setUser((prev) => prev ? { ...prev, ...changes } : prev)
   }, [])
 
+  /**
+   * Cache the avatar URL in localStorage after a successful upload.
+   * The JWT doesn't include avatar_url, so we persist it in C_PROFILE
+   * so it survives page refreshes.
+   */
+  const cacheAvatar = useCallback((avatarUrl) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(C_PROFILE) || 'null') || {}
+      localStorage.setItem(C_PROFILE, JSON.stringify({ ...existing, avatar_url: avatarUrl }))
+    } catch { /* ignore storage errors */ }
+    setUser((prev) => prev ? { ...prev, avatar_url: avatarUrl } : prev)
+  }, [])
+
   return (
     <CitizenAuthContext.Provider value={{
       isAuthenticated, user,
-      login, register, logout, updateProfile,
+      login, register, logout, updateProfile, cacheAvatar,
     }}>
       {children}
     </CitizenAuthContext.Provider>
