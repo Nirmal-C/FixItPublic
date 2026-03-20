@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Users, UserPlus, Trash2, RefreshCw, ShieldCheck,
   ShieldAlert, User, X, AlertCircle, CheckCircle2, Eye, EyeOff,
@@ -79,19 +80,19 @@ function EditDrawer({ user: u, onClose, onSaved }) {
     }
   }
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <button
         type="button"
-        className="fixed inset-0 bg-black/50 z-40"
+        className="fixed inset-0 bg-black/50 z-[9998]"
         onClick={onClose}
         aria-label="Close"
       />
 
       {/* Drawer */}
       <div
-        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md overflow-y-auto"
+        className="fixed right-0 top-0 bottom-0 z-[9999] w-full max-w-md overflow-y-auto"
         style={{ background: 'var(--surface)', borderLeft: '1px solid var(--divider)' }}
       >
         <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--divider)' }}>
@@ -215,7 +216,8 @@ function EditDrawer({ user: u, onClose, onSaved }) {
           </div>
         </form>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 
@@ -246,8 +248,8 @@ function Toggle({ label, description, on, onToggle }) {
 
 // ── Delete confirm modal ──────────────────────────────────────────────────────
 function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/60" onClick={onCancel} />
       <div className="relative glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="flex items-center gap-3">
@@ -275,7 +277,8 @@ function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
