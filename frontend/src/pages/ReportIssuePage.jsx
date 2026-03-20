@@ -749,32 +749,26 @@ export default function ReportIssuePage() {
                       Location <span className="text-rose-400">*</span>
                     </span>
                   </label>
-                  {/* Location is captured via GPS or a map pin. */}
-                  <div className="flex gap-2 items-start">
-                    <div
-                      className={`form-input flex-1 flex items-center justify-between gap-3 ${errors.location_description ? 'error' : ''}`}
-                      style={{ minHeight: 44 }}
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-500">
-                          {form.lat != null && form.lng != null ? 'Location captured' : 'No location selected'}
-                        </div>
-                        <div className="text-sm text-slate-100 truncate">
-                          {form.location_description
-                            ? form.location_description
-                            : 'Use GPS or pick a spot on the map'}
-                        </div>
-                      </div>
-                      {form.lat != null && form.lng != null
-                        ? <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
-                        : <MapPin size={16} className="shrink-0 text-slate-500" />
-                      }
-                    </div>
+
+                  {/* Address text input */}
+                  <input
+                    type="text"
+                    value={form.location_description}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, location_description: e.target.value }))
+                      setErrors((prev) => ({ ...prev, location_description: null }))
+                    }}
+                    className={`form-input w-full mb-2 ${errors.location_description ? 'error' : ''}`}
+                    placeholder="e.g. 42 Queen Street, Auckland CBD"
+                  />
+
+                  {/* Coordinate capture buttons */}
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={handleGpsClick}
                       disabled={gpsLoading}
-                      className="btn-secondary px-3 py-2.5 shrink-0 gap-1.5 text-xs whitespace-nowrap"
+                      className="btn-secondary flex-1 px-3 py-2.5 gap-1.5 text-xs"
                       title="Capture location using GPS"
                     >
                       {gpsLoading
@@ -786,16 +780,25 @@ export default function ReportIssuePage() {
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
-                      className="btn-secondary px-3 py-2.5 shrink-0 gap-1.5 text-xs whitespace-nowrap"
-                      title="Pick the exact spot on a map"
+                      className="btn-secondary flex-1 px-3 py-2.5 gap-1.5 text-xs"
+                      title="Search address or drop a pin on the map"
                     >
                       <MapPin size={14} />
-                      Pick
+                      Pick on Map
                     </button>
                   </div>
+
+                  {/* Coordinates badge */}
+                  {form.lat != null && form.lng != null && (
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-400">
+                      <CheckCircle2 size={13} />
+                      Coordinates captured · {form.lat.toFixed(5)}, {form.lng.toFixed(5)}
+                    </div>
+                  )}
+
                   {errors.location_description
-                    ? <p className="form-error"><AlertCircle size={13} />{errors.location_description}</p>
-                    : <p className="form-hint">Use GPS or drop a pin to capture the exact location before continuing</p>
+                    ? <p className="form-error mt-1.5"><AlertCircle size={13} />{errors.location_description}</p>
+                    : <p className="form-hint">Type an address, use GPS, or drop a pin on the map</p>
                   }
                 </div>
 

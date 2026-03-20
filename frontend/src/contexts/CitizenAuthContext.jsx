@@ -3,6 +3,7 @@ import { authApi } from '../api/client'
 
 const C_ACCESS  = 'pfmrs_citizen_access'
 const C_REFRESH = 'pfmrs_citizen_refresh'
+const C_PROFILE = 'pfmrs_citizen_profile' // profile overrides not in JWT
 
 const CitizenAuthContext = createContext(null)
 
@@ -25,9 +26,16 @@ function loadUser() {
     // Stale token — clear storage so we start fresh
     localStorage.removeItem(C_ACCESS)
     localStorage.removeItem(C_REFRESH)
+    localStorage.removeItem(C_PROFILE)
     return null
   }
-  return payload
+  // Merge profile overrides saved after the JWT was issued (e.g. toggled email_notifications)
+  try {
+    const overrides = JSON.parse(localStorage.getItem(C_PROFILE) || 'null') || {}
+    return { ...payload, ...overrides }
+  } catch {
+    return payload
+  }
 }
 
 export function CitizenAuthProvider({ children }) {
@@ -65,16 +73,22 @@ export function CitizenAuthProvider({ children }) {
   const logout = useCallback(() => {
     localStorage.removeItem(C_ACCESS)
     localStorage.removeItem(C_REFRESH)
+    localStorage.removeItem(C_PROFILE)
     setUser(null)
   }, [])
 
   /**
    * Persist a partial profile update (e.g. toggling email_notifications)
    * via PATCH /api/auth/profile/ then merge changes into local user state.
-   * The JWT is not reissued on profile updates so we update state directly.
+   * The JWT is not reissued on profile updates so we also persist the changes
+   * in localStorage so they survive page refreshes.
    */
   const updateProfile = useCallback(async (changes) => {
     await authApi.updateProfile(changes)
+    try {
+      const existing = JSON.parse(localStorage.getItem(C_PROFILE) || 'null') || {}
+      localStorage.setItem(C_PROFILE, JSON.stringify({ ...existing, ...changes }))
+    } catch { /* ignore storage errors */ }
     setUser((prev) => prev ? { ...prev, ...changes } : prev)
   }, [])
 
