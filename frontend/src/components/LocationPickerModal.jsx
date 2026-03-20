@@ -136,29 +136,34 @@ export default function LocationPickerModal({
   const handleSearch = async (e) => {
     e.preventDefault()
     const q = searchQuery.trim()
-    if (!q || !mapRef.current) return
+    if (!q) return
     setSearching(true)
     setSearchError('')
     try {
-      const maps = await loadGoogleMaps()
-      const geocoder = new maps.Geocoder()
-      const res = await geocoder.geocode({ address: q, region: 'NZ' })
-      if (!res?.results?.length) {
+      // Use Nominatim for forward geocoding — no API key needed, works on localhost
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=nz`,
+        { headers: { 'Accept-Language': 'en' } }
+      )
+      const data = await res.json()
+      if (!data?.length) {
         setSearchError('No results found. Try a more specific address.')
         return
       }
-      const loc = res.results[0].geometry.location
-      const pos = { lat: loc.lat(), lng: loc.lng() }
-      mapRef.current.panTo(pos)
-      mapRef.current.setZoom(16)
-      if (!markerRef.current) {
-        markerRef.current = new maps.Marker({ map: mapRef.current, position: pos })
-      } else {
-        markerRef.current.setPosition(pos)
+      const pos = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      if (mapRef.current) {
+        const maps = await loadGoogleMaps()
+        mapRef.current.panTo(pos)
+        mapRef.current.setZoom(16)
+        if (!markerRef.current) {
+          markerRef.current = new maps.Marker({ map: mapRef.current, position: pos })
+        } else {
+          markerRef.current.setPosition(pos)
+        }
       }
       setPicked(pos)
     } catch {
-      setSearchError('Search failed. Please try again.')
+      setSearchError('Search failed. Please check your connection and try again.')
     } finally {
       setSearching(false)
     }
