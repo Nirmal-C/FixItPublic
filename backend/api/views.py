@@ -289,45 +289,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
         category = self.request.data.get('category', 'other')
         auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
 
-        # Spatial deduplication — reject if an open ticket of the same category
-        # already exists within 50 m of the submitted coordinates.
-        try:
-            lat = float(self.request.data.get('lat')) if self.request.data.get('lat') else None
-            lng = float(self.request.data.get('lng')) if self.request.data.get('lng') else None
-        except (TypeError, ValueError):
-            lat = lng = None
-
-        if lat is not None and lng is not None:
-            duplicate = MaintenanceTicket.find_nearby_duplicate(category, lat, lng)
-            if duplicate:
-                raise DRFValidationError({
-                    'duplicate': True,
-                    'existing_id': duplicate.pk,
-                    'detail': (
-                        f'A similar {category} issue (#{duplicate.pk}) has already been '
-                        'reported within 50 m of this location and is still open.'
-                    ),
-                })
-
         ticket = serializer.save(assigned_crew=auto_crew)
-
-        # Handle direct-to-cloud blob paths — assign blob names to photo fields
-        # when the frontend has already uploaded files directly to Azure Storage.
-        photo_paths = self.request.data.getlist('photo_paths') if hasattr(
-            self.request.data, 'getlist'
-        ) else self.request.data.get('photo_paths', [])
-        if isinstance(photo_paths, str):
-            photo_paths = [photo_paths]
-        if photo_paths:
-            photo_field_names = ['photo', 'photo2', 'photo3', 'photo4', 'photo5']
-            update_photo_fields = []
-            for i, blob_name in enumerate(photo_paths[:5]):
-                if blob_name:
-                    field_name = photo_field_names[i]
-                    getattr(ticket, field_name).name = blob_name
-                    update_photo_fields.append(field_name)
-            if update_photo_fields:
-                ticket.save(update_fields=update_photo_fields)
 
         # If the citizen didn't provide GPS coordinates, try to read them from
         # EXIF metadata embedded in the uploaded photos.
@@ -338,7 +300,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
                     coords = extract_gps_exif(photo_field)
                     if coords:
                         ticket.lat, ticket.lng = coords
-                        ticket.save(update_fields=['lat', 'lng', 'location'])
+                        ticket.save(update_fields=['lat', 'lng'])
                         break
 
         send_ticket_confirmation(ticket)
@@ -730,59 +692,3 @@ class AILogClearView(generics.GenericAPIView):
             'deleted': count,
         })
 
-
-# ── Direct-to-cloud upload: SAS token endpoint ──────────────────────────────
-
-class UploadSASView(generics.GenericAPIView):
-    """
-    GET /api/upload-sas/?filename=<filename>
-    Returns a write-permission SAS URL for a unique blob in Azure.
-    The browser then PUTs the file directly to blob.core.windows.net —
-    the file never transits through Django, eliminating upload latency.
-    Authenticated users only (prevents anonymous blob-storage abuse).
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        import uuid
-        import os
-        from datetime import datetime, timezone as dt_timezone, timedelta
-        from azure.storage.blob import (
-            generate_blob_sas,
-            BlobSasPermissions,
-        )
-
-        account_name = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME', '')
-        account_key  = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY', '')
-        container    = 'maintenance-photos'
-
-        if not account_name or not account_key:
-            return Response(
-                {'detail': 'Azure storage not configured.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        original_name = request.query_params.get('filename', 'upload.jpg')
-        ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else 'jpg'
-        blob_name = f'tickets/direct/{uuid.uuid4().hex}.{ext}'
-
-        expiry = datetime.now(dt_timezone.utc) + timedelta(minutes=5)
-
-        sas_token = generate_blob_sas(
-            account_name=account_name,
-            container_name=container,
-            blob_name=blob_name,
-            account_key=account_key,
-            permission=BlobSasPermissions(write=True, create=True),
-            expiry=expiry,
-        )
-
-        upload_url = (
-            f'https://{account_name}.blob.core.windows.net'
-            f'/{container}/{blob_name}?{sas_token}'
-        )
-
-        return Response({
-            'upload_url': upload_url,
-            'blob_name':  blob_name,
-        })

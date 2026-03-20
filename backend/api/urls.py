@@ -90,7 +90,3 @@ urlpatterns += [
     path('ai-log/clear/',      AILogClearView.as_view(),      name='ai-log-clear'),
 ]
 
-from .views import UploadSASView
-urlpatterns += [
-    path('upload-sas/', UploadSASView.as_view(), name='upload-sas'),
-]
