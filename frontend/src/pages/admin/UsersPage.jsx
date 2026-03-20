@@ -87,7 +87,8 @@ function EditDrawer({ user: u, onClose, onSaved }) {
         aria-hidden="true"
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0,
+          position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+          width: '100vw', height: '100vh',
           background: 'rgba(0,0,0,0.65)',
           zIndex: 10000,
         }}
@@ -253,7 +254,7 @@ function Toggle({ label, description, on, onToggle }) {
 function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 10001 }}>
-      <div aria-hidden="true" onClick={onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 10000 }} />
+      <div aria-hidden="true" onClick={onCancel} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.65)', zIndex: 10000 }} />
       <div className="relative glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
