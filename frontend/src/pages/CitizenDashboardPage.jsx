@@ -112,7 +112,10 @@ export default function CitizenDashboardPage() {
   // a time-limited SAS URL in the browser. Re-runs whenever the user uploads
   // a new photo (avatarSaving toggles false → triggers re-fetch via key change).
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {
+      setAvatarBlobUrl(null)
+      return
+    }
     let objectUrl = null
     authApi.avatarBlob()
       .then((res) => {
