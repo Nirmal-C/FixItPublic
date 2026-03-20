@@ -110,7 +110,6 @@ class TicketListSerializer(serializers.ModelSerializer):
             'lat', 'lng',
             'assigned_crew',
             'escalated', 'escalation_level', 'escalation_note',
-            'cultural_flag', 'cultural_site',
             'created_at', 'updated_at',
         )
 
@@ -138,13 +137,11 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             'reporter_display',
             'assigned_crew',
             'escalated', 'escalation_level', 'escalation_note', 'escalated_at',
-            'cultural_flag', 'cultural_site',
             'created_at', 'updated_at',
         )
         read_only_fields = (
             'id', 'status', 'reporter_user', 'created_at', 'updated_at',
             'assigned_crew', 'escalated', 'escalation_level', 'escalation_note', 'escalated_at',
-            'cultural_flag', 'cultural_site',
         )
 
     def get_reporter_display(self, obj):
