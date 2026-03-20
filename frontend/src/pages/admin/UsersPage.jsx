@@ -81,22 +81,21 @@ function EditDrawer({ user: u, onClose, onSaved }) {
   }
 
   return createPortal(
-    /* Single root — isolation:isolate gives it its own stacking context above everything */
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 10000, isolation: 'isolate' }}>
-      {/* Backdrop */}
+    <>
+      {/* Backdrop — sits directly in body stacking context, no wrapper */}
       <div
         aria-hidden="true"
         onClick={onClose}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)' }}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99997 }}
       />
 
       {/* Drawer */}
       <div
         className="overflow-y-auto"
         style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0,
+          position: 'fixed', top: 0, right: 0, bottom: 0,
           width: '100%', maxWidth: '28rem',
-          zIndex: 1,
+          zIndex: 99998,
           background: 'var(--surface)',
           borderLeft: '1px solid var(--divider)',
         }}
@@ -222,7 +221,7 @@ function EditDrawer({ user: u, onClose, onSaved }) {
           </div>
         </form>
       </div>
-    </div>,
+    </>,
     document.body
   )
 }
@@ -255,9 +254,10 @@ function Toggle({ label, description, on, onToggle }) {
 // ── Delete confirm modal ──────────────────────────────────────────────────────
 function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
   return createPortal(
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 10000, isolation: 'isolate', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div aria-hidden="true" onClick={onCancel} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)' }} />
-      <div className="glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ position: 'relative', zIndex: 1, border: '1px solid rgba(239,68,68,0.3)' }}>
+    <>
+      <div aria-hidden="true" onClick={onCancel} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99997 }} />
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', pointerEvents: 'none' }}>
+      <div className="glass p-6 rounded-2xl w-full max-w-sm flex flex-col gap-4" style={{ pointerEvents: 'auto', border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
             <Trash2 size={18} style={{ color: '#ef4444' }} />
@@ -283,7 +283,8 @@ function DeleteModal({ user: u, onCancel, onConfirm, deleting }) {
           </button>
         </div>
       </div>
-    </div>,
+      </div>
+    </>,
     document.body
   )
 }

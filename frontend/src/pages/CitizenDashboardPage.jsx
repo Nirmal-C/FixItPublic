@@ -87,6 +87,11 @@ export default function CitizenDashboardPage() {
       .then(([ticketsRes, profileRes]) => {
         setTickets(ticketsRes.data?.results || [])
         setProfile(profileRes.data)
+        // Refresh the avatar cache with the latest SAS URL from the backend
+        // so the cached URL stays fresh and doesn't expire
+        if (profileRes.data.avatar_url) {
+          cacheAvatar(profileRes.data.avatar_url)
+        }
         setEditForm({
           first_name: profileRes.data.first_name || '',
           last_name:  profileRes.data.last_name  || '',
