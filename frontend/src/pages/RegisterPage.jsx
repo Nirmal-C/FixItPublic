@@ -220,7 +220,7 @@ export default function RegisterPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   aria-label="Toggle password visibility"
                 >
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPass ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
               </div>
               {errors.password
@@ -250,7 +250,7 @@ export default function RegisterPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   aria-label="Toggle confirm password visibility"
                 >
-                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showConfirm ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
               </div>
               {errors.confirm && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.confirm}</p>}
