@@ -155,7 +155,7 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   aria-label="Toggle password visibility"
                 >
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPass ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
               </div>
             </div>

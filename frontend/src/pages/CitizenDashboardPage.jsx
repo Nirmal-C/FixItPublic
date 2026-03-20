@@ -525,7 +525,7 @@ export default function CitizenDashboardPage() {
                             style={{ color: 'var(--text-muted)' }}
                             onClick={() => setShow((v) => !v)}
                           >
-                            {show ? <EyeOff size={13} /> : <Eye size={13} />}
+                            {show ? <Eye size={13} /> : <EyeOff size={13} />}
                           </button>
                         </div>
                         {key === 'new_password' && <PasswordStrength pw={pwForm.new_password} />}
