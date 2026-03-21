@@ -26,6 +26,7 @@ from .serializers import (
     MapTicketSerializer,
 )
 from .permissions import IsCouncilAdmin, IsSuperuser
+from .decorators import log_request, require_council_role, cache_response
 from .emails import (
     send_welcome_email,
     send_ticket_confirmation,
@@ -386,6 +387,7 @@ class MyTicketsView(generics.ListAPIView):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@log_request
 def map_tickets(request):
     """
     GET /api/map/
@@ -429,7 +431,9 @@ def map_tickets(request):
 # ── Admin stats breakdown ───────────────────────────────────────────────────────
 
 @api_view(['GET'])
-@permission_classes([IsCouncilAdmin])
+@permission_classes([AllowAny])   # access control handled by @require_council_role below
+@require_council_role
+@log_request
 def admin_stats(request):
     """
     GET /api/admin/stats/
@@ -554,6 +558,8 @@ def admin_stats(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@cache_response(timeout=300)   # cache public stats for 5 minutes
+@log_request
 def public_stats(request):
     """
     GET /api/stats/
