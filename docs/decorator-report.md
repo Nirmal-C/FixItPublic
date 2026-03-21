@@ -1,6 +1,6 @@
 # Python Decorators in FixItPublic — MSE800.2 Sprint Report
 
-**Student:** Rukshan de Silva
+**Students:** Nirmal Unagalle · Rukshan De Silva
 **Project:** FixItPublic — Civic Issue Reporting Platform
 **Repository:** https://github.com/Nirmal-C/FixItPublic
 **Sprint:** 1–4 · Backend API Refinement
