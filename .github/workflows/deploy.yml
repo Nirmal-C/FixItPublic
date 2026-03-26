@@ -84,7 +84,7 @@ jobs:
             --from-literal=AZURE_STORAGE_ACCOUNT_KEY='${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}' \
             --from-literal=EMAIL_HOST_PASSWORD='${{ secrets.EMAIL_HOST_PASSWORD }}' \
             --from-literal=OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
-            --from-literal=GOOGLE_CLIENT_ID='${{ secrets.VITE_GOOGLE_CLIENT_ID }}' \
+            --from-literal=GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to AKS
