@@ -32,6 +32,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
+from .emails import send_welcome_email, send_signin_notification
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
@@ -94,6 +96,8 @@ def google_auth_view(request):
                 {'detail': 'This account has been deactivated. Please contact support.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        # Existing account: treat this as a sign-in (welcome email is only for first-time creation).
+        send_signin_notification(user)
     except User.DoesNotExist:
         username = _unique_username(google_email.split('@')[0])
         user = User.objects.create_user(
@@ -108,6 +112,7 @@ def google_auth_view(request):
         user.save()
         created = True
         logger.info('New citizen created via Google auth: %s', google_email)
+        send_welcome_email(user)
 
     tokens = _make_jwt_pair(user)
     return Response({
