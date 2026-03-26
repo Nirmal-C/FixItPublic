@@ -129,6 +129,7 @@ export const authApi = {
   changePassword: (data)    => apiClient.post('/api/auth/change-password/', data),
   forgotPassword: (data)    => apiClient.post('/api/auth/forgot-password/', data),
   resetPassword:  (data)    => apiClient.post('/api/auth/reset-password/', data),
+  googleAuth:     (token)   => apiClient.post('/api/auth/google/', { token }), 
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
