@@ -1,4 +1,5 @@
 from django.urls import path
+from .google_auth import google_auth_view
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView, TokenObtainPairView
 
 from .token_serializer import CustomTokenObtainPairSerializer
@@ -50,6 +51,7 @@ urlpatterns = [
 
     # ── Auth ─────────────────────────────────────────────────────────────────
     path('auth/register/',      RegisterView.as_view(),              name='auth-register'),
+    path('auth/google/', google_auth_view, name='auth-google'),
     path('auth/token/',         CustomTokenObtainPairView.as_view(), name='token-obtain'),
     path('auth/token/refresh/', TokenRefreshView.as_view(),          name='token-refresh'),
     path('auth/token/verify/',  TokenVerifyView.as_view(),           name='token-verify'),
