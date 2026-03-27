@@ -3,6 +3,7 @@ import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, AlertCircle, ArrowLeft, Building2, ShieldCheck, User } from 'lucide-react'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { useToast } from '../../components/Toast'
+import GoogleAuthButton from '../../components/GoogleAuthButton'
 
 export default function AdminLoginPage() {
   const [username,     setUsername]     = useState('')
@@ -10,13 +11,15 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error,        setError]        = useState(null)
   const [loading,      setLoading]      = useState(false)
+  const [gLoading,     setGLoading]     = useState(false)
 
-  const { isAuthenticated, login } = useAdminAuth()
+  const { isAuthenticated, login, loginWithGoogle } = useAdminAuth()
   const toast    = useToast()
   const navigate = useNavigate()
 
   if (isAuthenticated) return <Navigate to="/admin" replace />
 
+  // Standard username/password login
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
@@ -32,22 +35,28 @@ export default function AdminLoginPage() {
     }
   }
 
+  // Google login
+  const handleGoogleSuccess = async (googleToken) => {
+    setGLoading(true)
+    setError(null)
+    try {
+      await loginWithGoogle(googleToken)
+      toast.success('Welcome back, Admin', { title: 'Signed in with Google' })
+      navigate('/admin')
+    } catch (err) {
+      setError(err?.userMessage || err?.message || 'Google sign-in failed or account has no admin access.')
+    } finally {
+      setGLoading(false)
+    }
+  }
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
-    >
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="w-full max-w-sm">
 
         {/* ── Government header banner ── */}
-        <div
-          className="rounded-t-lg px-8 py-6 text-center"
-          style={{ backgroundColor: '#001E3C', borderBottom: '3px solid #FFC72C' }}
-        >
-          <div
-            className="w-14 h-14 rounded-lg flex items-center justify-center mx-auto mb-4"
-            style={{ backgroundColor: '#FFC72C' }}
-          >
+        <div className="rounded-t-lg px-8 py-6 text-center" style={{ backgroundColor: '#001E3C', borderBottom: '3px solid #FFC72C' }}>
+          <div className="w-14 h-14 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#FFC72C' }}>
             <Building2 size={26} style={{ color: '#001E3C' }} />
           </div>
           <h1 className="text-lg font-bold text-white">Admin Portal</h1>
@@ -57,28 +66,43 @@ export default function AdminLoginPage() {
         </div>
 
         {/* ── Login form card ── */}
-        <div
-          className="rounded-b-lg px-8 py-7 flex flex-col gap-5"
-          style={{
-            backgroundColor: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderTop: 'none',
-          }}
-        >
+        <div className="rounded-b-lg px-8 py-7 flex flex-col gap-5" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--card-border)', borderTop: 'none' }}>
+          
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              FixItPublic — Auckland City Infrastructure Services
+              FixItPublic — New Zealand Infrastructure Services
             </p>
           </div>
 
+          {/* Global error */}
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded text-sm" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.30)', color: '#ef4444' }}>
+              <AlertCircle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Google Sign-in */}
+          <GoogleAuthButton
+            onSuccess={handleGoogleSuccess}
+            onError={(msg) => setError(msg)}
+            disabled={loading || gLoading}
+            label={gLoading ? 'Signing in…' : 'Sign in with Google'}
+          />
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ background: 'var(--divider)' }} />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or use credentials</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--divider)' }} />
+          </div>
+
+          {/* Username/Password form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
             {/* Username */}
             <div>
               <label className="form-label">
-                <span className="flex items-center gap-1.5">
-                  <User size={13} /> Username
-                </span>
+                <span className="flex items-center gap-1.5"><User size={13} /> Username</span>
               </label>
               <input
                 type="text"
@@ -103,40 +127,14 @@ export default function AdminLoginPage() {
                   placeholder="Enter your password"
                   autoComplete="current-password"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
+                <button type="button" onClick={() => setShowPassword((v) => !v)} className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1" aria-label={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded text-sm"
-                style={{
-                  background: 'rgba(220,38,38,0.08)',
-                  border: '1px solid rgba(220,38,38,0.30)',
-                  color: '#ef4444',
-                }}
-              >
-                <AlertCircle size={14} className="shrink-0" />
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn-primary w-full py-2.5 justify-center"
-              disabled={loading || !username || !password}
-            >
-              {loading
-                ? 'Signing in…'
-                : <><ShieldCheck size={16} /> Sign In Securely</>
-              }
+            <button type="submit" className="btn-primary w-full py-2.5 justify-center" disabled={loading || gLoading || !username || !password}>
+              {loading ? 'Signing in…' : <><ShieldCheck size={16} /> Sign In Securely</>}
             </button>
           </form>
 
@@ -147,9 +145,9 @@ export default function AdminLoginPage() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
-            <ArrowLeft size={14} />
-            Back to public site
+            <ArrowLeft size={14} /> Back to public site
           </Link>
+
         </div>
 
         <p className="text-center text-[10px] mt-4" style={{ color: 'var(--text-muted)' }}>
