@@ -176,6 +176,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class UserListView(generics.ListAPIView):
     serializer_class   = AdminUserSerializer
     permission_classes = [IsSuperuser]
+    pagination_class   = None
 
     def get_queryset(self):
         qs     = User.objects.all().order_by('-date_joined')
@@ -226,6 +227,7 @@ class AdminUserListView(generics.ListAPIView):
     queryset           = User.objects.all().order_by('-date_joined')
     serializer_class   = AdminUserSerializer
     permission_classes = [IsCouncilAdmin]
+    pagination_class   = None
 
 
 # ── Tickets ─────────────────────────────────────────────────────────────────────

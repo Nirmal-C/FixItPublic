@@ -184,6 +184,8 @@ export default function CitizenDashboardPage() {
       return 'Username may only contain letters, numbers, and @/./+/-/_'
     if (!editForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email))
       return 'Please enter a valid email address.'
+    if (editForm.phone && !/^(\+64|0)[0-9\s\-()+]{6,14}$/.test(editForm.phone.trim()))
+      return 'Phone must be a valid NZ number (e.g. +64 9 123 4567 or 09 123 4567).'
     return ''
   }
 
@@ -221,7 +223,7 @@ export default function CitizenDashboardPage() {
       await authApi.changePassword(pwForm)
       setPwSuccess('Password changed successfully.')
       setPwForm({ current_password: '', new_password: '', confirm_password: '' })
-      setPwSection(false)
+      setTimeout(() => { setPwSection(false); setPwSuccess('') }, 2500)
     } catch (err) {
       setPwError(err.response?.data?.detail || 'Failed to change password.')
     } finally {
@@ -528,7 +530,7 @@ export default function CitizenDashboardPage() {
                             style={{ color: 'var(--text-muted)' }}
                             onClick={() => setShow((v) => !v)}
                           >
-                            {show ? <Eye size={13} /> : <EyeOff size={13} />}
+                            {show ? <EyeOff size={13} /> : <Eye size={13} />}
                           </button>
                         </div>
                         {key === 'new_password' && <PasswordStrength pw={pwForm.new_password} />}
