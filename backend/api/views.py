@@ -33,6 +33,7 @@ from .emails import (
     send_ticket_status_update,
     send_signin_notification,
 )
+from .services import TicketService
 
 User = get_user_model()
 
@@ -287,27 +288,11 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return qs.order_by(ordering)
 
     def perform_create(self, serializer):
-        """Auto-assign crew from category; check spatial dupe; extract EXIF GPS if not supplied."""
-        from rest_framework.exceptions import ValidationError as DRFValidationError
-
-        category = self.request.data.get('category', 'other')
+        """Persist the ticket then delegate all post-creation steps to TicketService."""
+        category  = self.request.data.get('category', 'other')
         auto_crew = CATEGORY_CREW_MAP.get(category, 'crew-echo')
-
-        ticket = serializer.save(assigned_crew=auto_crew)
-
-        # If the citizen didn't provide GPS coordinates, try to read them from
-        # EXIF metadata embedded in the uploaded photos.
-        if ticket.lat is None or ticket.lng is None:
-            for field_name in ('photo', 'photo2', 'photo3', 'photo4', 'photo5'):
-                photo_field = getattr(ticket, field_name)
-                if photo_field:
-                    coords = extract_gps_exif(photo_field)
-                    if coords:
-                        ticket.lat, ticket.lng = coords
-                        ticket.save(update_fields=['lat', 'lng'])
-                        break
-
-        send_ticket_confirmation(ticket)
+        ticket    = serializer.save(assigned_crew=auto_crew)
+        TicketService.finalise_new_ticket(ticket)
 
 
 class TicketDetailView(generics.RetrieveAPIView):
@@ -325,8 +310,7 @@ class TicketStatusUpdateView(generics.UpdateAPIView):
     def perform_update(self, serializer):
         old_status = serializer.instance.status
         ticket     = serializer.save()
-        if ticket.status != old_status:
-            send_ticket_status_update(ticket, old_status=old_status)
+        TicketService.handle_status_transition(ticket, old_status)
 
 
 class TicketAssignView(generics.UpdateAPIView):
