@@ -619,10 +619,14 @@ def send_ticket_status_update(ticket, old_status: str = None) -> None:
 
 def send_signin_notification(user) -> None:
     """
-    Sent on every successful login — only if the user has opted in.
+    Sent on every successful login.
+
+    Citizens: only if opted in via `email_notifications`.
+    Admin/superuser: always send (security notice for privileged accounts).
     Serves as a security notice so users know when their account is accessed.
     """
-    if not user.email or not _user_wants_email(user):
+    is_privileged = getattr(user, 'role', None) in ('admin', 'superuser')
+    if not user.email or (not is_privileged and not _user_wants_email(user)):
         return
 
     name        = user.first_name or user.username
