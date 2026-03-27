@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown, Bell, BellOff, LayoutDashboard } from 'lucide-react'
+import { Menu, X, Sun, Moon, Building2, AlertCircle, LogIn, UserCircle, LogOut, ChevronDown, Bell, BellOff, LayoutDashboard, FileText } from 'lucide-react'
 import { NAV_LINKS } from '../utils/constants'
 import { useTheme } from '../contexts/ThemeContext'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
@@ -136,7 +136,7 @@ export default function Navbar() {
                 </button>
                 {userMenuOpen && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-56 rounded-xl py-1 z-50"
+                    className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-1rem)] rounded-xl py-1 z-50"
                     style={{ background: '#001E3C', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
                   >
                     <Link
@@ -253,6 +253,35 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
+            {isAuthenticated && (
+              <div className="flex flex-col gap-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8, marginTop: 4 }}>
+                <Link to="/dashboard" onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-4 py-3 rounded text-sm font-medium text-white/65 hover:text-white hover:bg-white/5 transition-colors">
+                  <LayoutDashboard size={15} /> My Dashboard
+                </Link>
+                <Link to="/track" onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-4 py-3 rounded text-sm font-medium text-white/65 hover:text-white hover:bg-white/5 transition-colors">
+                  <FileText size={15} /> My Reports
+                </Link>
+                <button
+                  onClick={handleToggleNotifications}
+                  disabled={togglingNotif}
+                  className="flex items-center justify-between px-4 py-3 rounded text-sm font-medium text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                >
+                  <span className="flex items-center gap-2">
+                    {user?.email_notifications
+                      ? <Bell size={15} className="text-indigo-400" />
+                      : <BellOff size={15} />}
+                    Email updates
+                  </span>
+                  <span className="w-7 h-4 rounded-full flex items-center transition-colors duration-200 shrink-0"
+                    style={{ background: user?.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.15)', padding: '2px' }}>
+                    <span className="w-3 h-3 rounded-full bg-white transition-transform duration-200"
+                      style={{ transform: user?.email_notifications ? 'translateX(12px)' : 'translateX(0)' }} />
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="pt-3 mt-2 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <Link
                 to="/report"

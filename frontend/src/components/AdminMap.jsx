@@ -262,7 +262,7 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
             {MAP_TYPES.map((t, i) => (
               <button key={t.id} onClick={() => setMapType(t.id)}
@@ -303,9 +303,9 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
       </div>
 
       {/* Map + detail panel */}
-      <div className="flex gap-3" style={{ minHeight: 480 }}>
+      <div className="flex flex-col md:flex-row gap-3" style={{ minHeight: 480 }}>
         <div className="flex-1 rounded-2xl overflow-hidden relative"
-          style={{ border: '1px solid var(--card-border)', minHeight: 440, position: 'relative' }}>
+          style={{ border: '1px solid var(--card-border)', minHeight: 'clamp(300px, 50vh, 480px)', position: 'relative' }}>
           {/* Important: keep Google Maps container free of React-managed children.
               Google mutates/clears the container DOM, which can break React deletion. */}
           <div ref={mapRef} className="absolute inset-0" />
@@ -333,7 +333,7 @@ export default function AdminMap({ tickets = [], loading = false, onStatusChange
         </div>
 
         {selectedTicket ? (
-          <div className="w-72 shrink-0 glass p-4 flex flex-col gap-3 rounded-2xl animate-slide-up"
+          <div className="w-full md:w-72 shrink-0 glass p-4 flex flex-col gap-3 rounded-2xl animate-slide-up"
             style={{ maxHeight: 480, overflowY: 'auto' }}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">

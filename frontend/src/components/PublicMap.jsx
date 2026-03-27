@@ -194,33 +194,38 @@ export default function PublicMap({ tickets = [], loading = false }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <MapPin size={16} />
-          <span>Issue Map</span>
-          <span>{mappedTickets.length} mapped</span>
+          <MapPin size={16} style={{ color: 'var(--accent)' }} />
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Issue Map</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{ background: 'rgba(0,119,200,0.15)', color: 'var(--accent-text)', border: '1px solid rgba(0,119,200,0.3)' }}>
+            {mappedTickets.length} mapped
+          </span>
         </div>
-
-        <button onClick={() => setShowFilters(v => !v)}>
-          <Filter size={12} /> Filters ({activeFilterCount})
+        <button
+          onClick={() => setShowFilters(v => !v)}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
+          style={{ background: activeFilterCount > 0 ? 'rgba(0,119,200,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}
+        >
+          <Filter size={12} /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
         </button>
       </div>
 
       {showFilters && (
-        <div>
+        <div className="glass p-3 rounded-xl flex flex-col gap-3">
           <div>
-            <strong>Category</strong>
-            <div>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Category</p>
+            <div className="flex flex-wrap gap-1.5">
               <FilterChip label="All" active={activeCategory === 'all'} color="#0077C8" onClick={() => setActiveCategory('all')} />
               {CATEGORIES.filter(c => mappedCategories.includes(c.id)).map(c => (
                 <FilterChip key={c.id} label={c.label} active={activeCategory === c.id} color={c.color} onClick={() => setActiveCategory(c.id)} />
               ))}
             </div>
           </div>
-
           <div>
-            <strong>Status</strong>
-            <div>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Status</p>
+            <div className="flex flex-wrap gap-1.5">
               <FilterChip label="All" active={activeStatus === 'all'} color="#0077C8" onClick={() => setActiveStatus('all')} />
               {STATUSES.map(s => (
                 <FilterChip key={s.id} label={s.label} active={activeStatus === s.id} color={s.color} onClick={() => setActiveStatus(s.id)} />
@@ -232,7 +237,7 @@ export default function PublicMap({ tickets = [], loading = false }) {
 
       <div
         ref={mapRef}
-        style={{ height: 500, borderRadius: 12 }}
+        style={{ height: 'clamp(300px, 55vw, 500px)', borderRadius: 12 }}
       />
 
       {!loading && mappedTickets.length === 0 && (
