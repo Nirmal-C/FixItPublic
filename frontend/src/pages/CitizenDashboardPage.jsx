@@ -251,7 +251,7 @@ export default function CitizenDashboardPage() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }) => (
             <div key={key} className="glass p-4 flex flex-col gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: bg }}>

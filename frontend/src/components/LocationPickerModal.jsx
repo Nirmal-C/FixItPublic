@@ -201,7 +201,7 @@ export default function LocationPickerModal({
         aria-label="Close location picker"
       />
 
-      <div className="relative w-full max-w-3xl glass rounded-2xl overflow-hidden border border-white/10">
+      <div className="relative w-full max-w-3xl glass rounded-2xl overflow-hidden border border-white/10 max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
             <MapPin size={16} className="text-indigo-400" />
@@ -215,7 +215,7 @@ export default function LocationPickerModal({
           </button>
         </div>
 
-        <div className="px-5 py-4">
+        <div className="px-5 py-4 overflow-y-auto flex-1">
           {/* Address search bar */}
           <form onSubmit={handleSearch} className="flex gap-2 mb-3">
             <div className="relative flex-1">
@@ -247,7 +247,7 @@ export default function LocationPickerModal({
             <>
               <div
                 ref={mapElRef}
-                style={{ height: 380, borderRadius: 12 }}
+                style={{ height: 'clamp(220px, 42vh, 380px)', borderRadius: 12 }}
                 className="border border-white/10"
               />
               {loading && (

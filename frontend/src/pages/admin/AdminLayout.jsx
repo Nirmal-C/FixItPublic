@@ -49,7 +49,7 @@ export default function AdminLayout() {
       <aside
         className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-all duration-300
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        style={{ width: `${W}px`, backgroundColor: '#001E3C', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+        style={{ width: mobileOpen ? '256px' : `${W}px`, backgroundColor: '#001E3C', borderRight: '1px solid rgba(255,255,255,0.07)' }}
       >
         <div className="flex items-center h-14 px-4 shrink-0" style={{ borderBottom: '3px solid #FFC72C' }}>
           {!collapsed && (
@@ -119,7 +119,7 @@ export default function AdminLayout() {
       </aside>
 
       <div
-        className={`flex flex-col min-h-screen transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}
+        className={`flex flex-col min-h-screen transition-all duration-300 ${collapsed ? 'md:ml-16' : 'md:ml-64'} ${mobileOpen ? 'pointer-events-none select-none' : ''}`}
       >
         <header className="sticky top-0 z-20 flex items-center justify-between px-6 h-14 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--divider)' }}>
           <div className="flex items-center gap-3">
