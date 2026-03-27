@@ -192,6 +192,7 @@ export default function LoginPage() {
               </label>
               <div className="relative mt-1.5">
                 <input
+                  key={showPass ? 'pass-text' : 'pass-pwd'}
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
                   onChange={set('password')}

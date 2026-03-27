@@ -74,8 +74,12 @@ function EditDrawer({ user: u, onClose, onSaved }) {
 
   const handleSave = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setErrors({})
+    if (form.phone && !/^(\+64|0)[0-9\s\-()+]{6,14}$/.test(form.phone.trim())) {
+      setErrors({ phone: 'Enter a valid NZ phone number (e.g. +64 9 123 4567).' })
+      return
+    }
+    setSaving(true)
     try {
       const payload = { ...form }
       if (!payload.new_password) delete payload.new_password
@@ -162,9 +166,10 @@ function EditDrawer({ user: u, onClose, onSaved }) {
             <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={form.phone} onChange={set('phone')}
-              className="form-input pl-8" placeholder="+64 9 000 0000"
+              className={`form-input pl-8 ${errors.phone ? 'error' : ''}`} placeholder="+64 9 000 0000"
             />
           </div>
+          {errors.phone && <p className="form-error"><AlertCircle size={12} />{errors.phone}</p>}
         </div>
 
         {/* Role */}
@@ -204,6 +209,7 @@ function EditDrawer({ user: u, onClose, onSaved }) {
           </label>
           <div className="relative">
             <input
+              key={showPass ? 'edit-pass-text' : 'edit-pass-pwd'}
               type={showPass ? 'text' : 'password'}
               value={form.new_password} onChange={set('new_password')}
               className={`form-input pr-10 ${errors.new_password ? 'error' : ''}`}
@@ -361,6 +367,14 @@ export default function UsersPage() {
   const handleCreate = async (e) => {
     e.preventDefault()
     setFormErrors({})
+
+    const clientErrors = {}
+    if (form.password !== form.password2)
+      clientErrors.password2 = 'Passwords do not match.'
+    if (form.phone && !/^(\+64|0)[0-9\s\-()+]{6,14}$/.test(form.phone.trim()))
+      clientErrors.phone = 'Enter a valid NZ phone number (e.g. +64 9 123 4567).'
+    if (Object.keys(clientErrors).length) { setFormErrors(clientErrors); return }
+
     setSubmitting(true)
     try {
       await apiClient.post('/api/superuser/users/create/', form, { headers: adminHeaders() })
@@ -452,7 +466,7 @@ export default function UsersPage() {
             <div>
               <label className="form-label">Password <span className="text-rose-400">*</span></label>
               <div className="relative">
-                <input type={showPass ? 'text' : 'password'} value={form.password} onChange={setF('password')} className={`form-input pr-10 ${formErrors.password ? 'error' : ''}`} placeholder="••••••••" />
+                <input key={showPass ? 'cp-text' : 'cp-pwd'} type={showPass ? 'text' : 'password'} value={form.password} onChange={setF('password')} className={`form-input pr-10 ${formErrors.password ? 'error' : ''}`} placeholder="••••••••" />
                 <button type="button" onClick={() => setShowPass((v) => !v)} className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 p-1">
                   {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
@@ -461,12 +475,13 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="form-label">Confirm Password <span className="text-rose-400">*</span></label>
-              <input type={showPass ? 'text' : 'password'} value={form.password2} onChange={setF('password2')} className={`form-input ${formErrors.password2 ? 'error' : ''}`} placeholder="••••••••" />
+              <input key={showPass ? 'cp2-text' : 'cp2-pwd'} type={showPass ? 'text' : 'password'} value={form.password2} onChange={setF('password2')} className={`form-input ${formErrors.password2 ? 'error' : ''}`} placeholder="••••••••" />
               {formErrors.password2 && <p className="form-error"><AlertCircle size={12} />{formErrors.password2}</p>}
             </div>
             <div>
               <label className="form-label">Phone <span className="text-slate-500 font-normal">(optional)</span></label>
-              <input type="text" value={form.phone} onChange={setF('phone')} className="form-input" placeholder="+64 9 000 0000" />
+              <input type="text" value={form.phone} onChange={setF('phone')} className={`form-input ${formErrors.phone ? 'error' : ''}`} placeholder="+64 9 000 0000" />
+              {formErrors.phone && <p className="form-error"><AlertCircle size={12} />{formErrors.phone}</p>}
             </div>
             <div>
               <label className="form-label">Role <span className="text-rose-400">*</span></label>
