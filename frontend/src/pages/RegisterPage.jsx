@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, AlertCircle, CheckCircle2, Loader2, Building2, Eye, EyeOff } from 'lucide-react'
 import { useCitizenAuth } from '../contexts/CitizenAuthContext'
 import { useToast } from '../components/Toast'
-import GoogleAuthButton from '../components/GoogleAuthButton'
 
 function PasswordStrength({ password }) {
   if (!password) return null
@@ -49,13 +48,12 @@ export default function RegisterPage() {
   const [showPass, setShowPass]       = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading]         = useState(false)
-  const [gLoading, setGLoading]       = useState(false)
   const [errors, setErrors]           = useState({})
   const [globalError, setGlobalError] = useState('')
 
-  const { register, loginWithGoogle } = useCitizenAuth()
-  const navigate = useNavigate()
-  const toast    = useToast()
+  const { register } = useCitizenAuth()
+  const navigate     = useNavigate()
+  const toast        = useToast()
 
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }))
@@ -63,28 +61,22 @@ export default function RegisterPage() {
     setGlobalError('')
   }
 
-  // Validation for registration form
   const validate = () => {
     const e = {}
-    if (!form.username.trim())         e.username = 'Username is required.'
-    else if (form.username.length < 3) e.username = 'Username must be at least 3 characters.'
+    if (!form.username.trim())          e.username = 'Username is required.'
+    else if (form.username.length < 3)  e.username = 'Username must be at least 3 characters.'
     else if (!/^[\w.@+-]+$/.test(form.username)) e.username = 'Username may only contain letters, numbers, and @/./+/-/_'
-
-    if (!form.email.trim())            e.email = 'Email address is required.'
+    if (!form.email.trim())             e.email    = 'Email address is required.'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address.'
-
-    if (!form.password)                e.password = 'Password is required.'
-    else if (form.password.length < 8) e.password = 'Password must be at least 8 characters.'
-    else if (!/[A-Z]/.test(form.password)) e.password = 'Password must contain at least one uppercase letter.'
-    else if (!/[0-9]/.test(form.password)) e.password = 'Password must contain at least one number.'
-
-    if (!form.confirm)                 e.confirm = 'Please confirm your password.'
+    if (!form.password)                           e.password = 'Password is required.'
+    else if (form.password.length < 8)            e.password = 'Password must be at least 8 characters.'
+    else if (!/[A-Z]/.test(form.password))        e.password = 'Password must contain at least one uppercase letter.'
+    else if (!/[0-9]/.test(form.password))        e.password = 'Password must contain at least one number.'
+    if (!form.confirm)                  e.confirm  = 'Please confirm your password.'
     else if (form.confirm !== form.password) e.confirm = 'Passwords do not match.'
-
     return e
   }
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     const errs = validate()
@@ -101,37 +93,20 @@ export default function RegisterPage() {
         email_notifications: form.email_notifications,
       })
       toast.success('Account created successfully!', { title: 'Welcome!' })
-      navigate('/', { replace: true })
+      navigate('/login', { replace: true })
     } catch (err) {
       const data = err?.response?.data
       if (data && typeof data === 'object') {
-        // Map backend field errors
+        // Map Django field errors back to our form fields
         const mapped = {}
-        if (data.username) mapped.username = data.username[0]
-        if (data.email)    mapped.email    = data.email[0]
-        if (data.password) mapped.password = data.password[0]
+        if (data.username)   mapped.username = data.username[0]
+        if (data.email)      mapped.email    = data.email[0]
+        if (data.password)   mapped.password = data.password[0]
         if (Object.keys(mapped).length) { setErrors(mapped); return }
       }
       setGlobalError(err?.userMessage || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // Handle Google sign-in
-  const handleGoogleSuccess = async (googleToken) => {
-    setGLoading(true)
-    setGlobalError('')
-    try {
-      const data = await loginWithGoogle(googleToken)
-      toast.success(data.created ? 'Account created with Google!' : 'Welcome back!', {
-        title: data.created ? 'Account created' : 'Signed in',
-      })
-      navigate('/', { replace: true })
-    } catch (err) {
-      setGlobalError(err?.userMessage || 'Google sign-in failed. Please try again.')
-    } finally {
-      setGLoading(false)
     }
   }
 
@@ -161,32 +136,18 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {/* Show global error */}
           {globalError && (
-            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm"
-                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+            <div
+              className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+            >
               <AlertCircle size={15} className="shrink-0" />
               {globalError}
             </div>
           )}
 
-          {/* Google Sign-Up */}
-          <GoogleAuthButton
-            onSuccess={handleGoogleSuccess}
-            onError={(msg) => setGlobalError(msg)}
-            disabled={loading || gLoading}
-            label={gLoading ? 'Signing up…' : 'Sign up with Google'}
-          />
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: 'var(--divider)' }} />
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or create with email</span>
-            <div className="flex-1 h-px" style={{ background: 'var(--divider)' }} />
-          </div>
-
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
 
-            {/* First Name */}
             <div>
               <label htmlFor="first_name" className="form-label">
                 <User size={13} className="inline mr-1.5 text-indigo-400" />
@@ -201,9 +162,9 @@ export default function RegisterPage() {
                 placeholder="e.g. Aroha"
                 autoComplete="given-name"
               />
+              {errors.first_name && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.first_name}</p>}
             </div>
 
-            {/* Username */}
             <div>
               <label htmlFor="username" className="form-label">
                 <User size={13} className="inline mr-1.5 text-indigo-400" />
@@ -221,7 +182,6 @@ export default function RegisterPage() {
               {errors.username && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.username}</p>}
             </div>
 
-            {/* Email */}
             <div>
               <label htmlFor="email" className="form-label">
                 <Mail size={13} className="inline mr-1.5 text-indigo-400" />
@@ -239,7 +199,6 @@ export default function RegisterPage() {
               {errors.email && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.email}</p>}
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="form-label">
                 <Lock size={13} className="inline mr-1.5 text-indigo-400" />
@@ -261,7 +220,7 @@ export default function RegisterPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   aria-label="Toggle password visibility"
                 >
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPass ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
               </div>
               {errors.password
@@ -270,7 +229,6 @@ export default function RegisterPage() {
               }
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label htmlFor="confirm" className="form-label">
                 <Lock size={13} className="inline mr-1.5 text-indigo-400" />
@@ -292,13 +250,12 @@ export default function RegisterPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   aria-label="Toggle confirm password visibility"
                 >
-                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showConfirm ? <Eye size={15} /> : <EyeOff size={15} />}
                 </button>
               </div>
               {errors.confirm && <p className="form-error mt-1"><AlertCircle size={12} /> {errors.confirm}</p>}
             </div>
 
-            {/* Email Notifications */}
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <div className="relative mt-0.5 shrink-0">
                 <input
@@ -312,7 +269,7 @@ export default function RegisterPage() {
                   className="w-5 h-5 rounded flex items-center justify-center transition-all duration-150"
                   style={{
                     background: form.email_notifications ? '#6366f1' : 'transparent',
-                    border: `2px solid ${form.email_notifications ? '#6366f1' : 'rgba(255,255,255,0.15)'}`,
+                    border: `2px solid ${form.email_notifications ? '#6366f1' : 'var(--border, #cbd5e1)'}`,
                   }}
                 >
                   {form.email_notifications && (
@@ -329,17 +286,15 @@ export default function RegisterPage() {
               By creating an account, you agree to our terms and the New Zealand Privacy Act 2020. Your data is used solely to manage and track maintenance reports.
             </p>
 
-            {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || gLoading}
+              disabled={loading}
               className="btn-primary w-full justify-center py-3 gap-2"
             >
               {loading ? <><Loader2 size={15} className="animate-spin" /> Creating account…</> : 'Create Account'}
             </button>
           </form>
 
-          {/* Sign in link */}
           <div className="text-center text-sm" style={{ borderTop: '1px solid var(--divider)', paddingTop: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
             <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">

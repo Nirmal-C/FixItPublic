@@ -9,4 +9,3 @@ Pillow
 whitenoise
 requests
 openai
-google-auth

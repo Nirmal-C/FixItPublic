@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './components/Toast'
@@ -22,18 +21,6 @@ import TicketsPage from './pages/admin/TicketsPage'
 import AILogPage from './pages/admin/AILogPage'
 import UsersPage from './pages/admin/UsersPage'
 
-function GoogleAnalytics() {
-  const location = useLocation()
-
-  useEffect(() => {
-    window.gtag('config', 'G-Y214GJ27LW', {
-      page_path: location.pathname,
-    })
-  }, [location])
-
-  return null
-}
-
 function HomeRedirect() {
   const { isAuthenticated } = useAdminAuth()
   if (isAuthenticated) return <Navigate to="/admin" replace />
@@ -53,7 +40,6 @@ function App() {
     <AdminAuthProvider>
     <CitizenAuthProvider>
       <Router>
-        <GoogleAnalytics />
         <Routes>
           {/* Public routes — wrapped in Layout (Navbar + Footer) */}
           <Route path="/" element={<Layout />}>
