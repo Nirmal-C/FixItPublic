@@ -1,20 +1,11 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import apiClient from '../api/client'
+import { decodePayload, isTokenExpired, clearAuthTokens } from '../utils/authUtils'
 
 const ACCESS_KEY  = 'pfmrs_access_token'
 const REFRESH_KEY = 'pfmrs_refresh_token'
 
 const AdminAuthContext = createContext(null)
-
-function decodePayload(token) {
-  try { return JSON.parse(atob(token.split('.')[1])) }
-  catch { return null }
-}
-
-function isTokenExpired(payload) {
-  if (!payload?.exp) return true
-  return Date.now() / 1000 > payload.exp - 30
-}
 
 export function AdminAuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -52,8 +43,7 @@ export function AdminAuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem(ACCESS_KEY)
-    localStorage.removeItem(REFRESH_KEY)
+    clearAuthTokens(ACCESS_KEY, REFRESH_KEY)
     setIsAuthenticated(false)
     setUser(null)
   }, [])

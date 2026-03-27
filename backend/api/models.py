@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -18,12 +20,14 @@ class User(AbstractUser):
         help_text='Send transactional emails for account events and ticket updates.',
     )
 
-    @property
+    @cached_property
     def is_council_admin(self):
+        """True for Admin and Superuser roles. Cached per instance to avoid repeated attribute lookups."""
         return self.role in (self.Role.ADMIN, self.Role.SUPERUSER)
 
-    @property
+    @cached_property
     def is_superuser_role(self):
+        """True only for the Superuser role. Cached per instance."""
         return self.role == self.Role.SUPERUSER
 
     def __str__(self):

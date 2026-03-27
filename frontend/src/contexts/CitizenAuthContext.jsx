@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import { authApi } from '../api/client'
+import { decodePayload, isTokenExpired, loadStoredUser, clearAuthTokens } from '../utils/authUtils'
 
 const C_ACCESS  = 'pfmrs_citizen_access'
 const C_REFRESH = 'pfmrs_citizen_refresh'
@@ -7,35 +8,16 @@ const C_PROFILE = 'pfmrs_citizen_profile' // profile overrides not in JWT
 
 const CitizenAuthContext = createContext(null)
 
-function decodePayload(token) {
-  try { return JSON.parse(atob(token.split('.')[1])) }
-  catch { return null }
-}
-
-function isTokenExpired(payload) {
-  if (!payload?.exp) return true
-  // exp is seconds since epoch — give a 30-second buffer for clock skew
-  return Date.now() / 1000 > payload.exp - 30
-}
-
+/**
+ * Hydrate the user from localStorage on initial render.
+ * Delegates token decoding, expiry checking, and profile-override
+ * merging to the shared authUtils module.
+ */
 function loadUser() {
-  const token = localStorage.getItem(C_ACCESS)
-  if (!token) return null
-  const payload = decodePayload(token)
-  if (!payload || isTokenExpired(payload)) {
-    // Stale token — clear storage so we start fresh
-    localStorage.removeItem(C_ACCESS)
-    localStorage.removeItem(C_REFRESH)
-    localStorage.removeItem(C_PROFILE)
-    return null
-  }
-  // Merge profile overrides saved after the JWT was issued (e.g. toggled email_notifications)
-  try {
-    const overrides = JSON.parse(localStorage.getItem(C_PROFILE) || 'null') || {}
-    return { ...payload, ...overrides }
-  } catch {
-    return payload
-  }
+  const user = loadStoredUser(C_ACCESS, C_PROFILE)
+  // If the stored token is missing or expired, ensure all related keys are wiped
+  if (!user) clearAuthTokens(C_REFRESH, C_PROFILE)
+  return user
 }
 
 export function CitizenAuthProvider({ children }) {
@@ -72,9 +54,7 @@ export function CitizenAuthProvider({ children }) {
   }, [login])
 
   const logout = useCallback(() => {
-    localStorage.removeItem(C_ACCESS)
-    localStorage.removeItem(C_REFRESH)
-    localStorage.removeItem(C_PROFILE)
+    clearAuthTokens(C_ACCESS, C_REFRESH, C_PROFILE)
     setUser(null)
   }, [])
 
