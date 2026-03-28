@@ -590,6 +590,7 @@ class AILogListView(generics.ListAPIView):
     Restricted to council admins and above.
     """
     permission_classes = [IsCouncilAdmin]
+    pagination_class = None
 
     def get_serializer_class(self):
         from .serializers import AILogSerializer
