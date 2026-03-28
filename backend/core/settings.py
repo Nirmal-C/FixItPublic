@@ -5,8 +5,16 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── 1. Security ────────────────────────────────────────────────────────────────
-SECRET_KEY    = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-local-dev-key')
-DEBUG         = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+_secret = os.environ.get('DJANGO_SECRET_KEY')
+if not _secret and not DEBUG:
+    raise RuntimeError(
+        'DJANGO_SECRET_KEY environment variable must be set in production. '
+        'Generate one with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
+    )
+SECRET_KEY = _secret or 'django-insecure-local-dev-only-never-use-in-production'
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # ── 2. Custom user model ───────────────────────────────────────────────────────
@@ -92,9 +100,47 @@ STORAGES = {
 }
 
 # ── 6. CORS ────────────────────────────────────────────────────────────────────
-CORS_ALLOW_ALL_ORIGINS = True
+# In production set CORS_ALLOWED_ORIGINS env var as a comma-separated list.
+# In local dev (DEBUG=True) all origins are allowed for convenience.
+_cors_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_env:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_env.split(',') if o.strip()]
+elif DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'https://fixitpublic.com',
+        'https://www.fixitpublic.com',
+    ]
 
-# ── 7. DRF + SimpleJWT ────────────────────────────────────────────────────────
+# ── 6b. Security headers ───────────────────────────────────────────────────────
+# Safe to enable in all environments.
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS             = 'DENY'
+
+# HTTPS-only headers — enable once Cloudflare/SSL is live by setting HTTPS_ENABLED=True.
+# Behind AKS + Nginx load-balancer, Django receives plain HTTP from the proxy;
+# SECURE_PROXY_SSL_HEADER tells Django to trust the X-Forwarded-Proto header.
+if os.environ.get('HTTPS_ENABLED', 'False') == 'True':
+    SECURE_PROXY_SSL_HEADER        = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT            = True
+    SECURE_HSTS_SECONDS            = 31_536_000   # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD            = True
+    SESSION_COOKIE_SECURE          = True
+    CSRF_COOKIE_SECURE             = True
+
+# ── 7. Password validation ─────────────────────────────────────────────────────
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'api.validators.PasswordComplexityValidator'},
+]
+
+# ── 9. DRF + SimpleJWT ────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',

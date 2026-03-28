@@ -2,6 +2,7 @@ import requests as http_requests
 from django.http import JsonResponse, HttpResponse
 from django.db import connection
 from django.db.models import Q, Count
+from django.db.models.functions import TruncDate
 from django.core.files.storage import default_storage
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -514,7 +515,7 @@ def admin_stats(request):
     daily_qs = (
         all_tickets
         .filter(created_at__gte=thirty_days_ago)
-        .extra(select={'day': "DATE(created_at)"})
+        .annotate(day=TruncDate('created_at'))
         .values('day')
         .annotate(count=Count('id'))
         .order_by('day')
