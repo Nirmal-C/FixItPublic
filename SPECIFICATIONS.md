@@ -42,10 +42,10 @@ the initial crew assignment and escalation decision automatically.
 |---|---|
 | **GPT-4o Ticket Analysis** | On every ticket creation, GPT-4o receives the title, category, description, and location. It returns: best-fit crew, escalation decision (with level and note), a one-line summary, step-by-step reasoning, and a confidence score. All results are stored in the `AILog` table and surfaced on the Admin AI Log page with real-time filtering. |
 | **Spatial Deduplication** *(planned)* | Clusters reports within a 50-metre radius to prevent duplicate tickets for the same issue. |
-| **GPS EXIF Extraction** *(planned)* | Reads GPS metadata from uploaded photos to auto-populate coordinates without requiring the citizen to use the map picker. |
-| **Google Maps Geocoding** *(planned)* | Converts raw lat/lng into a verified street address string for maintenance crew dispatch. |
-| **MCP Cultural Guardian** *(planned)* | Cross-references report locations against Wāhi Tapu databases to flag and protect culturally sensitive sites before a crew is dispatched. |
-| **PII Redaction Engine** *(planned)* | Strips personally identifiable information locally before ticket data is passed to any cloud AI service. |
+| **GPS EXIF Extraction** | Reads GPS metadata from uploaded photos to auto-populate coordinates without requiring the citizen to use the map picker. |
+| **Google Maps Geocoding** | Converts raw lat/lng into a verified street address string for maintenance crew dispatch. |
+| **MCP Cultural Guardian** | Cross-references report locations against Wāhi Tapu databases to flag and protect culturally sensitive sites before a crew is dispatched. |
+| **PII Redaction Engine** | Strips personally identifiable information locally before ticket data is passed to any cloud AI service. |
 | **Anonymous Participation** | Citizens can submit tickets without an account — anonymous reports require only a title, category, and location. Optional name and email fields allow ticket-tracking emails without registration. |
 | **Bilingual UI** | All section headings, labels, and CTAs carry Te Reo Māori subtitles alongside English text, aligned with Te Tiriti o Waitangi principles of partnership and participation. |
 
