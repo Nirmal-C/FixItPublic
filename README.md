@@ -22,13 +22,14 @@ The UI carries both English and Te Reo Māori labels throughout, aligned with th
 10. [Email Notifications](#email-notifications)
 11. [Custom Decorators](#custom-decorators)
 12. [Security & Infrastructure](#security--infrastructure)
-13. [Local Development](#local-development)
-14. [Environment Variables](#environment-variables)
-15. [Docker](#docker)
-16. [Kubernetes (AKS)](#kubernetes-aks)
-17. [CI/CD](#cicd)
-18. [Roadmap](#roadmap)
-19. [Contributors](#contributors)
+13. [How to Run](#how-to-run)
+14. [Local Development](#local-development)
+15. [Environment Variables](#environment-variables)
+16. [Docker](#docker)
+17. [Kubernetes (AKS)](#kubernetes-aks)
+18. [CI/CD](#cicd)
+19. [Roadmap](#roadmap)
+20. [Contributors](#contributors)
 
 ---
 
@@ -437,6 +438,156 @@ All three decorators use `functools.wraps` to preserve the original function's `
 | Photo proxy | `/api/photos/<path>/` generates a fresh SAS URL server-side and streams bytes; Azure key never reaches the browser |
 | JWT blacklist | Refresh tokens are blacklisted on rotation, preventing reuse after refresh |
 | Role enforcement | Three roles (`citizen`, `admin`, `superuser`) encoded in JWT and enforced by `IsCouncilAdmin` and `IsSuperuser` permission classes |
+
+---
+
+## How to Run
+
+### Prerequisites
+
+Before running either locally or in production, ensure you have the following:
+
+- **Docker Desktop** (or Docker + Docker Compose v2) — for local development
+- **Node.js 18+** — only if running the frontend outside Docker
+- **Python 3.11+** — only if running the backend outside Docker
+- A populated `.env` file (see [Environment Variables](#environment-variables))
+
+Minimum required environment variables to get a working local instance:
+
+| Variable | Notes |
+|---|---|
+| `DJANGO_SECRET_KEY` | Any long random string for local use |
+| `DEBUG` | Set to `True` for local development |
+| `DB_*` | PostgreSQL connection details |
+| `VITE_GOOGLE_MAPS_API_KEY` | Maps will render a grey box without this |
+| `OPENAI_API_KEY` | Optional — AI analysis is skipped gracefully if absent |
+
+---
+
+### Option 1 — Docker Compose (Recommended for Local Development)
+
+This is the fastest way to get both services running with hot-reload.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Nirmal-C/FixItPublic.git
+cd FixItPublic
+
+# 2. Copy the example env file and fill in your values
+cp .env.example .env
+
+# 3. Build and start both services
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| React frontend | http://localhost:5173 |
+| Django backend | http://localhost:8000 |
+
+The Vite dev server automatically proxies all `/api` requests to the Django container — no CORS configuration needed locally.
+
+**Useful commands while running:**
+
+```bash
+# Run database migrations
+docker compose exec backend python manage.py migrate
+
+# Create a superuser (reads credentials from your .env)
+docker compose exec backend python manage.py create_superuser_from_env
+
+# Open a Django shell
+docker compose exec backend python manage.py shell
+
+# View backend logs in real time
+docker compose logs -f backend
+
+# View frontend logs in real time
+docker compose logs -f frontend
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (wipes the local database)
+docker compose down -v
+```
+
+---
+
+### Option 2 — Running Services Manually (Without Docker)
+
+Use this approach if you prefer to run Django and Vite directly on your machine.
+
+#### Backend (Django)
+
+```bash
+cd backend
+
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate        # macOS/Linux
+venv\Scripts\activate           # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Apply database migrations
+python manage.py migrate
+
+# Create a superuser interactively
+python manage.py createsuperuser
+
+# Start the development server
+python manage.py runserver
+# Django is now available at http://localhost:8000
+```
+
+#### Frontend (React + Vite)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the Vite dev server
+npm run dev
+# React is now available at http://localhost:5173
+```
+
+> **Note:** When running without Docker, ensure the Vite proxy in `vite.config.js` points to `http://localhost:8000` so frontend API calls reach the Django server.
+
+---
+
+### Option 3 — Production Build (Docker, No Hot-Reload)
+
+This builds the optimised production images locally.
+
+```bash
+# Build production images
+docker build -t fixitpublic-backend ./backend
+docker build -t fixitpublic-frontend ./frontend
+
+# Run them (adjust env vars as needed)
+docker run -p 8000:8000 --env-file .env fixitpublic-backend
+docker run -p 80:80 fixitpublic-frontend
+```
+
+The frontend container's nginx will proxy `/api` requests to the backend. Ensure `ALLOWED_HOSTS` and `CORS_ALLOWED_ORIGINS` are set correctly in your `.env` for production.
+
+---
+
+### First-Time Setup Checklist
+
+After the services are running for the first time:
+
+- [ ] Migrations applied (`python manage.py migrate`)
+- [ ] Superuser created (`create_superuser_from_env` or `createsuperuser`)
+- [ ] Google Maps API key set in `.env` (maps require a valid key)
+- [ ] OpenAI API key set in `.env` (optional — AI log will show errors without it)
+- [ ] SMTP credentials set if you want email notifications to function
+- [ ] Visit `http://localhost:5173` to confirm the citizen portal loads
+- [ ] Visit `http://localhost:5173/admin/login` to confirm the admin portal loads
 
 ---
 
