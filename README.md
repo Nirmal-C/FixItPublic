@@ -579,6 +579,17 @@ Items below are approved and planned:
 
 ---
 
+## Future Plans
+
+| Feature | Description |
+|---|---|
+| **Mobile Application** | Native iOS and Android apps (React Native) allowing citizens to report issues, track ticket status, and receive push notifications — with full offline-first support for low-connectivity areas across New Zealand |
+| **Spatial Deduplication** | Cluster reports within a 50-metre radius to prevent duplicate tickets for the same issue |
+| **Expanded Ticket Categories** | Add more common categories for citizens to select when submitting a report (e.g. noise complaint, illegal dumping, vandalism, water leak, vehicle tow) to reduce reliance on the generic "Other" option and improve AI crew assignment accuracy |
+| **Council Email Notifications** | Automatically notify the relevant council email address when a new ticket is submitted or its status changes, ensuring council staff are kept in the loop without needing to log in to the admin portal |
+
+---
+
 ## Contributors
 
 | Name | Role |
