@@ -572,7 +572,6 @@ Items below are approved and planned:
 
 | Feature | Description |
 |---|---|
-| **Spatial deduplication** | Cluster reports within a 50-metre radius to prevent duplicate tickets for the same issue |
 | **GPS EXIF extraction** | Read GPS metadata from uploaded photos to auto-populate coordinates without requiring the map picker |
 | **Google Maps Geocoding** | Convert raw lat/lng to a verified street address string for crew dispatch |
 | **MCP Cultural Guardian** | Cross-reference report locations against Wāhi Tapu databases to flag culturally sensitive sites before dispatch |
