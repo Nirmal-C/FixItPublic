@@ -2,6 +2,8 @@
 
 > **Bilingual civic issue reporting platform for New Zealand local councils**
 
+**Live:** [fixitpublic.com](https://fixitpublic.com) &nbsp;|&nbsp; **Admin portal:** [fixitpublic.com/admin](https://fixitpublic.com/admin)
+
 FixItPublic lets citizens report broken streetlights, damaged footpaths, graffiti, flooding, and other public infrastructure issues directly to their council maintenance teams. Admins triage, assign, and track every ticket through to resolution — with GPT-4o handling the initial crew assignment and escalation decision automatically on every new submission.
 
 The UI carries both English and Te Reo Māori labels throughout, aligned with the principles of Te Tiriti o Waitangi.
@@ -743,9 +745,46 @@ Items below are approved and planned:
 
 ## Contributors
 
-| Name | Role |
-|---|---|
-| **Nirmal Unagalle** | Full-stack development, backend architecture |
-| **Rukshan De Silva** | Full-stack development, frontend architecture |
+### Rukshan De Silva — Frontend Lead & QA Engineer
 
-Repository: https://github.com/Nirmal-C/FixItPublic
+**Frontend**
+- Built the complete React 18 UI from scratch — all pages, routing, and component architecture
+- `CitizenAuthContext` and `AdminAuthContext` — dual JWT context system with silent token refresh via Axios interceptors; separate localStorage namespaces prevent cross-portal state leakage
+- `ReportIssuePage.jsx` — 3-step report form: GPS auto-fill via browser Geolocation API, Nominatim reverse-geocoding, Google Maps location picker, 8 bilingual issue categories with Te Reo Māori subtitles, up to 5 photo uploads with live preview, AI animation on submit
+- `CitizenDashboardPage.jsx` — self-service profile management, avatar upload to Azure Blob, ticket history with status tracking
+- `PublicMap.jsx` and `AdminMap.jsx` — Google Maps integration with colour-coded pins, category/status filters, and click-through ticket detail
+- Te Reo Māori bilingual interface throughout the platform (Te Tiriti o Waitangi — Participation principle)
+- `PrivateRoute` component — redirect-on-unauthenticated guard without `useEffect` delays
+
+**Backend (Python)**
+- `backend/api/decorators.py` — three custom Python function decorators: `@log_request` (full request/response audit logging), `@require_council_role` (role-based access control), `@cache_response` (configurable TTL caching for high-traffic endpoints)
+- Admin UI for the Cultural Guardian module (Wāhi Tapu site flagging interface)
+
+**QA**
+- End-to-end QA testing across the live Azure deployment — 28 test cases, 100% pass rate across all 4 sprints
+
+---
+
+### Nirmal Unagalle — Backend Lead & DevOps Engineer
+
+**Backend**
+- Django 4.2 + Django REST Framework API — models, serializers, viewsets, permissions, throttling
+- `signals.py` — GPT-4o AI triage engine: post_save signal triggers structured-output analysis in a background daemon thread; crew routing, PII redaction, confidence scoring, reasoning audit trail
+- `cultural_guardian.py` — Cultural Guardian module using ray-casting point-in-polygon algorithm against 4 Auckland Wāhi Tapu site polygons
+- `google_auth.py` — Google OAuth 2.0 ID token verification and automatic citizen account creation
+- `emails.py` — transactional SMTP email notifications with per-user opt-in toggle
+- JWT authentication with djangorestframework-simplejwt including token blacklisting on logout
+- Rate limiting: `AnonRateThrottle` on register and ticket submission endpoints
+
+**Infrastructure & DevOps**
+- Docker — separate optimised containers for Django backend and React/Nginx frontend
+- Azure Kubernetes Service (AKS) — two-pod microservices deployment with Recreate/RollingUpdate strategies
+- Azure Container Registry — SHA-tagged image registry for reproducible, rollback-friendly deploys
+- Azure Blob Storage — photo and avatar file storage with cache-control headers
+- GitHub Actions CI/CD — automated build → ACR push → AKS deploy on every push to `main`
+- Azure PostgreSQL Flexible Server — SSL-enforced, 9 ORM migrations across 4 sprints
+
+---
+
+Repository: https://github.com/Nirmal-C/FixItPublic  
+Live: https://fixitpublic.com
